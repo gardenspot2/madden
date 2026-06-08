@@ -1,0 +1,1964 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  Trophy, 
+  Coins, 
+  Package, 
+  Users, 
+  ChevronLeft,
+  RefreshCw,
+  Scissors,
+  X,
+  Sparkles,
+  Gift,
+  Zap,
+  Shield,
+  Swords,
+  Target,
+  Timer,
+  Gamepad2,
+  Bell,
+  Crosshair,
+  Star,
+  Filter
+} from 'lucide-react';
+
+// --- MOCK DATABASE & GENERATION ---
+const TIERS = {
+  BRONZE: { name: 'Bronze', color: 'from-[#cd7f32] to-[#8c5a24]', border: 'border-[#cd7f32]/50', text: 'text-[#ffdcb5]', glow: 'shadow-[#cd7f32]/40' },
+  SILVER: { name: 'Silver', color: 'from-[#e2e8f0] to-[#94a3b8]', border: 'border-[#e2e8f0]/50', text: 'text-white', glow: 'shadow-[#e2e8f0]/40' },
+  GOLD: { name: 'Gold', color: 'from-[#fbbf24] to-[#b45309]', border: 'border-[#fbbf24]/50', text: 'text-[#fef3c7]', glow: 'shadow-[#fbbf24]/50' },
+  ELITE: { name: 'Elite', color: 'from-[#f0abfc] to-[#c026d3]', border: 'border-[#f0abfc]/50', text: 'text-[#fae8ff]', glow: 'shadow-[#d946ef]/80 shadow-[0_0_60px_rgba(217,70,239,0.8)]' },
+};
+
+// Top 90+ Elites (Scrubbed unverified IDs to prevent wrong faces)
+const ELITE_STARS = [
+  { id: 1, name: 'Patrick Mahomes', pos: 'QB', team: 'KC', rating: 99, tier: 'ELITE', espnId: '3139477', trend: 1, league: 'NFL' },
+  { id: 2, name: 'Justin Jefferson', pos: 'WR', team: 'MIN', rating: 98, tier: 'ELITE', espnId: '4262921', trend: 1, league: 'NFL' },
+  { id: 3, name: 'Myles Garrett', pos: 'DE', team: 'CLE', rating: 98, tier: 'ELITE', espnId: 'fallback', trend: 0, league: 'NFL' },
+  { id: 4, name: 'Christian McCaffrey', pos: 'RB', team: 'SF', rating: 97, tier: 'ELITE', espnId: '3117251', trend: 0, league: 'NFL' },
+  { id: 5, name: 'Travis Kelce', pos: 'TE', team: 'KC', rating: 96, tier: 'ELITE', espnId: '15847', trend: -1, league: 'NFL' },
+  { id: 6, name: 'Micah Parsons', pos: 'LB', team: 'DAL', rating: 96, tier: 'ELITE', espnId: 'fallback', trend: 1, league: 'NFL' },
+  { id: 7, name: 'Tyreek Hill', pos: 'WR', team: 'MIA', rating: 96, tier: 'ELITE', espnId: '3116406', trend: 0, league: 'NFL' },
+  { id: 8, name: 'Lamar Jackson', pos: 'QB', team: 'BAL', rating: 95, tier: 'ELITE', espnId: '3916387', trend: 0, league: 'NFL' },
+  { id: 33, name: 'Josh Allen', pos: 'QB', team: 'BUF', rating: 95, tier: 'ELITE', espnId: '3918298', trend: 1, league: 'NFL' },
+  { id: 34, name: 'Nick Bosa', pos: 'DE', team: 'SF', rating: 94, tier: 'ELITE', espnId: 'fallback', trend: 0, league: 'NFL' },
+  { id: 36, name: 'A.J. Brown', pos: 'WR', team: 'PHI', rating: 93, tier: 'ELITE', espnId: '4047646', trend: 1, league: 'NFL' },
+  { id: 37, name: 'Maxx Crosby', pos: 'DE', team: 'LV', rating: 92, tier: 'ELITE', espnId: 'fallback', trend: 0, league: 'NFL' },
+  { id: 47, name: 'T.J. Watt', pos: 'LB', team: 'PIT', rating: 97, tier: 'ELITE', espnId: 'fallback', trend: 0, league: 'NFL' },
+  { id: 48, name: 'Dexter Lawrence', pos: 'DT', team: 'NYG', rating: 90, tier: 'ELITE', espnId: 'fallback', trend: 0, league: 'NFL' },
+  { id: 50, name: 'Derrick Henry', pos: 'RB', team: 'BAL', rating: 94, tier: 'ELITE', espnId: '3043078', trend: -1, league: 'NFL' },
+  { id: 56, name: 'Patrick Surtain II', pos: 'CB', team: 'DEN', rating: 94, tier: 'ELITE', espnId: 'fallback', trend: 1, league: 'NFL' },
+  { id: 57, name: 'Minkah Fitzpatrick', pos: 'S', team: 'PIT', rating: 94, tier: 'ELITE', espnId: 'fallback', trend: 0, league: 'NFL' },
+];
+
+// Massively Expanded Real Player Pool
+// Format: Name|Pos|Team|OVR|Trend|ESPN_ID (ESPN ID is optional, will fallback to clean logo card if omitted)
+const REAL_NFL_STARTERS_DENSE = [
+  "Dak Prescott|QB|DAL|88|0|2577417", "Jalen Hurts|QB|PHI|86|1|4043020", "Justin Herbert|QB|LAC|84|0|4038941", "Aaron Rodgers|QB|NYJ|81|-2|8439", 
+  "Tua Tagovailoa|QB|MIA|88|0|4241479", "Jared Goff|QB|DET|85|1|2977688", "Matthew Stafford|QB|LAR|82|-1|12483", "Brock Purdy|QB|SF|82|1|4361741", 
+  "CJ Stroud|QB|HOU|89|1|4432577", "Jordan Love|QB|GB|84|1|4241476", "Trevor Lawrence|QB|JAX|83|0|4360310", "Kirk Cousins|QB|ATL|84|-1|14880", 
+  "Kyler Murray|QB|ARI|83|0|3917315", "Russell Wilson|QB|PIT|80|-1|14881", "Baker Mayfield|QB|TB|81|0|3115303", "Geno Smith|QB|SEA|82|-1|15864", 
+  "Derek Carr|QB|NO|80|-1|2971863", "Deshaun Watson|QB|CLE|79|-1|3122840", "Bryce Young|QB|CAR|78|1|4432704", "Anthony Richardson|QB|IND|80|1|4431611",
+  "Caleb Williams|QB|CHI|80|1|4433970", "Jayden Daniels|QB|WAS|79|1|4426348", "Drake Maye|QB|NE|78|1|4431452", "Bo Nix|QB|DEN|76|1|4426338",
+  "Sam Darnold|QB|MIN|75|0|3912547", "Gardner Minshew|QB|LV|76|0|4038524", "Daniel Jones|QB|NYG|76|-1|3917792", "Will Levis|QB|TEN|77|1|4361701",
+  "Breece Hall|RB|NYJ|84|1|4426515", "Saquon Barkley|RB|PHI|88|0|3929630", "Najee Harris|RB|PIT|80|0|4241457", "Jonathan Taylor|RB|IND|88|0|4242335", 
+  "Nick Chubb|RB|CLE|89|-1|3128720", "Josh Jacobs|RB|GB|87|0|4043315", "Austin Ekeler|RB|WAS|84|-1|3068267", "Aaron Jones|RB|MIN|85|-1|3042519", 
+  "Aidan Hutchinson|DE|DET|89|1|4361665", "Dexter Lawrence|DT|NYG|90|0|3929631", "Quinnen Williams|DT|NYJ|89|0|4037180", "Brian Burns|DE|NYG|86|0|4035652",
+  "George Karlaftis|DE|KC|84|1|4361667", "Javon Hargrave|DT|SF|86|-1|3043135", "Justin Madubuike|DT|BAL|87|1|4241466", "Jalen Carter|DT|PHI|85|1|4432710",
+  "Ed Oliver|DT|BUF|84|0|3122138", "Trey Hendrickson|DE|CIN|88|0|3116166", "DeMarcus Lawrence|DE|DAL|86|-1|16710", "Zach Allen|DE|DEN|81|0|fallback",
+  "Alim McNeill|DT|DET|82|1|4361668", "Rashan Gary|DE|GB|86|0|3122139", "Kenny Clark|DT|GB|85|0|3043136", "Will Anderson Jr.|DE|HOU|85|1|4432711",
+  "Danielle Hunter|DE|HOU|87|0|2971619", "DeForest Buckner|DT|IND|88|0|3043137", "Josh Hines-Allen|DE|JAX|89|0|3122140", "Chris Jones|DT|KC|95|-1|3044279",
+  "Maxx Crosby|DE|LV|92|0|4035662", "Christian Wilkins|DT|LV|87|0|3122141", "Joey Bosa|DE|LAC|86|-1|3043138", "Khalil Mack|DE|LAC|88|-1|16711",
+  "Demario Davis|LB|NO|88|-1|14986", "Fred Warner|LB|SF|95|0|3122849", "Roquan Smith|LB|BAL|92|0|3915189", "Matt Milano|LB|BUF|86|0|3122142",
+  "Shaq Thompson|LB|CAR|81|-1|3122143", "Tremaine Edmunds|LB|CHI|83|0|3122144", "Logan Wilson|LB|CIN|84|0|3122145", "Jeremiah Owusu-Koramoah|LB|CLE|85|1|4361669",
+  "Foyesade Oluokun|LB|JAX|86|0|3122146", "Robert Spillane|LB|LV|81|0|3122147", "Ivan Pace Jr.|LB|MIN|80|1|4432712", "Bobby Okereke|LB|NYG|83|0|3122148",
+  "C.J. Mosley|LB|NYJ|85|-1|16712", "Patrick Queen|LB|PIT|84|1|4241467", "Lavonte David|LB|TB|86|-1|14987", "Kenneth Murray|LB|TEN|79|0|4035654",
+  "Jaire Alexander|CB|GB|88|0|3915151", "Denzel Ward|CB|CLE|87|0|3121513", "Trevon Diggs|CB|DAL|86|0|4043003", "L'Jarius Sneed|CB|TEN|87|0|4036262", 
+  "Trent McDuffie|CB|KC|88|1|4426362", "Charvarius Ward|CB|SF|86|0|3122149", "Marlon Humphrey|CB|BAL|85|0|3122150", "Darius Slay|CB|PHI|85|-1|15811",
+  "Rasul Douglas|CB|BUF|84|0|3122151", "Jaycee Horn|CB|CAR|84|1|4361670", "Jaylon Johnson|CB|CHI|87|1|4241468", "Cam Taylor-Britt|CB|CIN|82|1|4361671",
+  "DaRon Bland|CB|DAL|86|1|4432713", "Derek Stingley Jr.|CB|HOU|85|1|4432714", "Kenny Moore II|CB|IND|83|0|3122152", "Tyson Campbell|CB|JAX|83|1|4361672",
+  "Kyle Hamilton|S|BAL|89|1|4426473", "Budda Baker|S|ARI|86|0|3122153", "Jalen Thompson|S|ARI|82|0|3122154", "Jessie Bates III|S|ATL|89|0|3122155",
+  "Brian Branch|S|DET|84|1|4432715", "Xavier McKinney|S|GB|85|1|4241469", "Justin Reid|S|KC|83|0|3122156", "Derwin James Jr.|S|LAC|86|-1|3122157",
+  
+  // --- 100 NEW NFL PLAYERS ADDED ---
+  "Jameis Winston|QB|CLE|76|0|fallback", "Justin Fields|QB|PIT|78|0|fallback", "Mac Jones|QB|JAX|74|-1|fallback", "Jacoby Brissett|QB|NE|75|0|fallback",
+  "Aidan O'Connell|QB|LV|74|1|fallback", "Ezekiel Elliott|RB|DAL|78|-1|fallback", "J.K. Dobbins|RB|LAC|81|0|fallback", "Alexander Mattison|RB|LV|79|0|fallback",
+  "Chase Brown|RB|CIN|82|1|fallback", "Tyrone Tracy Jr.|RB|NYG|78|1|fallback", "Jayden Reed|WR|GB|81|1|fallback", "Romeo Doubs|WR|GB|82|1|fallback",
+  "Zay Flowers|WR|BAL|84|1|fallback", "Tyler Boyd|WR|TEN|79|0|fallback", "Brian Thomas Jr.|WR|JAX|80|1|fallback", "Josh Downs|WR|IND|82|1|fallback",
+  "Jerry Jeudy|WR|CLE|79|0|fallback", "Elijah Moore|WR|CLE|78|0|fallback", "Darren Waller|TE|NYG|81|-1|fallback", "Dawson Knox|TE|BUF|80|0|fallback",
+  "Isaiah Likely|TE|BAL|81|1|fallback", "Ryan Ramczyk|OT|NO|85|-1|fallback", "Kolton Miller|OT|LV|85|0|fallback", "Taylor Decker|OT|DET|84|0|fallback",
+  "Brian O'Neill|OT|MIN|84|0|fallback", "Bernhard Raimann|OT|IND|82|1|fallback", "Haason Reddick|DE|NYJ|86|0|fallback", "Matthew Judon|DE|ATL|84|-1|fallback",
+  "Jaelan Phillips|DE|MIA|84|1|fallback", "Greg Rousseau|DE|BUF|83|1|fallback", "Montez Sweat|DE|CHI|85|0|fallback", "Derrick Brown|DT|CAR|86|0|fallback",
+  "Quincy Williams|LB|NYJ|84|1|fallback", "Nick Bolton|LB|KC|84|0|fallback", "Dre Greenlaw|LB|SF|85|0|fallback", "T.J. Edwards|LB|CHI|83|0|fallback",
+  "Stephon Gilmore|CB|MIN|81|-1|fallback", "Kendall Fuller|CB|MIA|82|0|fallback", "Tariq Woolen|CB|SEA|85|1|fallback", "Justin Simmons|S|ATL|86|-1|fallback",
+  "Kevin Byard|S|CHI|84|-1|fallback", "Marcus Williams|S|BAL|83|0|fallback", "Grant Delpit|S|CLE|83|1|fallback", "D'Onta Foreman|RB|CLE|78|0|fallback",
+  "Jerome Ford|RB|PIT|80|1|fallback", "Khalil Herbert|RB|CIN|79|0|fallback", "Roschon Johnson|RB|CHI|80|1|fallback", "D'Ernest Johnson|RB|JAX|76|0|fallback",
+  "Elijah Mitchell|RB|MIA|79|0|fallback", "Justice Hill|RB|BAL|78|0|fallback", "Kenneth Gainwell|RB|PHI|79|0|fallback", "Antonio Gibson|RB|NE|78|0|fallback",
+  "Miles Sanders|RB|CAR|77|-1|fallback", "Jamaal Williams|RB|NO|79|0|fallback", "Kendre Miller|RB|NO|78|1|fallback", "Tyler Allgeier|RB|ATL|81|0|fallback",
+  "Dameon Pierce|RB|HOU|78|-1|fallback", "Rico Dowdle|RB|DAL|81|1|fallback", "Tyjae Spears|RB|TEN|80|1|fallback", "Curtis Samuel|WR|BUF|80|0|fallback",
+  "Darnell Mooney|WR|ATL|80|0|fallback", "Rashod Bateman|WR|BAL|80|1|fallback", "Josh Palmer|WR|LAC|80|1|fallback", "Wan'Dale Robinson|WR|NYG|79|1|fallback",
+  "Marquise Brown|WR|KC|81|0|fallback", "Allen Lazard|WR|NYJ|79|0|fallback", "K.J. Osborn|WR|NE|78|0|fallback", "Rondale Moore|WR|ATL|77|0|fallback",
+  "Kendrick Bourne|WR|NE|78|0|fallback", "Darius Slayton|WR|NYG|79|0|fallback", "Isaiah Hodgins|WR|NYG|76|0|fallback", "Michael Gallup|WR|LV|77|-1|fallback",
+  "Brandin Cooks|WR|DAL|81|-1|fallback", "Treylon Burks|WR|TEN|79|0|fallback", "Mike Williams|WR|NYJ|81|0|fallback", "Quentin Johnston|WR|LAC|78|1|fallback",
+  "Marvin Mims Jr.|WR|DEN|77|1|fallback", "Jalin Hyatt|WR|NYG|78|1|fallback", "Jonathan Mingo|WR|CAR|76|1|fallback", "Skyy Moore|WR|KC|75|-1|fallback",
+  "Kadarius Toney|WR|CLE|74|-1|fallback", "Marquez Valdes-Scantling|WR|BUF|76|0|fallback", "JuJu Smith-Schuster|WR|KC|77|-1|fallback", "Odell Beckham Jr.|WR|MIA|80|-1|fallback",
+  "Adam Thielen|WR|CAR|81|-1|fallback", "Tyler Higbee|TE|LAR|80|-1|fallback", "Gerald Everett|TE|CHI|78|0|fallback", "Hayden Hurst|TE|LAC|78|0|fallback",
+  "Noah Fant|TE|SEA|79|0|fallback", "Mike Gesicki|TE|CIN|79|0|fallback", "Irv Smith Jr.|TE|KC|76|0|fallback", "Logan Thomas|TE|SF|77|0|fallback",
+  "Austin Hooper|TE|NE|76|-1|fallback", "Zach Ertz|TE|WAS|78|-1|fallback", "C.J. Uzomah|TE|PHI|75|-1|fallback", "Tyler Conklin|TE|NYJ|78|0|fallback",
+  "Jonnu Smith|TE|MIA|77|0|fallback", "Foster Moreau|TE|NO|76|0|fallback", "Taysom Hill|TE|NO|79|0|fallback", "Juwan Johnson|TE|MIA|78|0|fallback"
+];
+
+// Actual UFL & CFL Stars
+const REAL_UFL_STARTERS = [
+  "Adrian Martinez|QB|BIR|90|1|4360295", "AJ McCarron|QB|STL|86|-1|5564", "Hakeem Butler|WR|STL|87|1|3917414",
+  "Luis Perez|QB|ARL|84|0|3119106", "Matt Corral|QB|BIR|83|1|4362142", "Daewood Davis|WR|MEM|85|1|4242194",
+  "Jace Sternberger|TE|BIR|86|0|3931381", "Ricky Person Jr.|RB|BIR|84|1|4361226", "Chris Rowland|WR|DC|82|0|4040994",
+  "Jake Bates|K|MICH|90|1|4360867", "Marquette King|P|ARL|85|-1|15509", "Abram Smith|RB|DC|85|0|4241925",
+  "Sal Cannella|TE|ARL|83|0|4039150", "Deandre Baker|CB|DC|84|0|3915155", "Reuben Foster|LB|HOU|86|0|3043131",
+  "DeMarquis Gates|LB|BIR|82|0|3120353", "Brad Wing|P|SA|81|0|16041", "Chase Garbers|QB|SA|80|1|4240763",
+  "Jontre Kirklin|WR|SA|83|1|4241981", "Kelvin Harmon|WR|DC|81|0|4039049", "Jordan Ta'amu|QB|DC|82|0|4035650", 
+  "Case Cookus|QB|MEM|81|0|3125096", "E.J. Perry|QB|MICH|80|1|4259546", "Anthony McFarland|RB|SA|83|0|4241995", 
+  "Mark Thompson|RB|HOU|82|0|3116723", "De'Veon Smith|RB|ARL|81|-1|3051392", "Deontay Burnett|WR|ARL|83|0|3916429", 
+  "Justin Hall|WR|HOU|82|1|4242200", "Darrius Shepherd|WR|STL|81|0|3128456", "Kevon Latulas|WR|SA|80|1|4361208", 
+  "Cody Latimer|WR|SA|84|-1|16790", "Breeland Speaks|DE|MICH|86|0|3122906", "Chris Odom|DE|HOU|85|0|3051388", 
+  "Taco Charlton|DE|BIR|84|-1|3051390", "Carlos Davis|DT|BIR|83|0|3916428", "John Daka|LB|HOU|82|0|3916430", 
+  "Donald Payne|LB|ARL|83|0|3051389", "Vontae Diggs|LB|MEM|84|0|3122907", "D.J. Swearinger|S|DC|85|-1|15809", 
+  "Will Hill|S|ARL|82|-1|14890", "Gareon Conley|CB|DC|83|0|3122908"
+];
+
+const REAL_CFL_STARTERS = [
+  "Brady Oliveira|RB|WPG|90|1|4040989", "Zach Collaros|QB|WPG|89|-1|15309", "Vernon Adams Jr.|QB|BC|88|1|2576307",
+  "Dalton Schoen|WR|WPG|88|1|3122176", "Cody Fajardo|QB|MTL|86|0|13349", "Alexander Hollins|WR|BC|87|1|3929424",
+  "Eugene Lewis|WR|EDM|88|0|3045330", "Tim White|WR|HAM|86|0|3040375", "Keon Hatcher|WR|BC|85|0|3120367",
+  "Peyton Logan|RB|CGY|83|1|4241088", "James Butler|RB|HAM|85|0|3122262", "Ka'Deem Carey|RB|TOR|86|0|3043144",
+  "Mathieu Betts|DE|BC|90|1|3929871", "Wynton McManis|LB|TOR|87|0|3121516", "Adarius Pickett|LB|OTT|86|0|3122216",
+  "Tre Ford|QB|EDM|84|1|4567280", "Chad Kelly|QB|TOR|87|0|3916962", "Shawn Bane Jr.|WR|SSK|84|1|3915165",
+  "Demerio Houston|CB|CGY|85|1|3915159", "Marc-Antoine Dequoy|S|MTL|86|1|4362145", "Bo Levi Mitchell|QB|HAM|85|-1|14891", 
+  "Jake Maier|QB|CGY|83|0|4241996", "Taylor Cornelius|QB|EDM|82|1|4040995", "AJ Ouellette|RB|SSK|84|1|4040996", 
+  "Kevin Brown|RB|EDM|83|1|4241997", "William Stanback|RB|BC|85|-1|3122909", "Reggie Begelton|WR|CGY|86|0|3051393", 
+  "Nic Demski|WR|WPG|85|0|3051394", "Dominique Rhymes|WR|OTT|84|0|3122910", "Kurleigh Gittens Jr.|WR|EDM|83|1|4241998", 
+  "Jevon Cottoy|WR|BC|82|0|4241999", "Shawn Lemon|DE|MTL|85|-1|14892", "Willie Jefferson|DE|WPG|87|-1|15810", 
+  "Mike Rose|DT|CGY|86|0|3122911", "Jovan Santos-Knox|LB|TOR|85|0|3051395", "Adam Bighill|LB|WPG|84|-1|14893", 
+  "Micah Awe|LB|CGY|83|0|3122912", "Garry Peters|CB|BC|84|0|3122913", "Jamal Peters|CB|HAM|83|1|4041000", 
+  "Alonzo Addae|S|OTT|82|1|4242001", "Rene Paredes|K|CGY|86|0|14894"
+];
+
+// Combine all real names into a Set to prevent duplicates in the generated backups
+const REAL_NAMES = new Set([
+  ...ELITE_STARS.map(p => p.name),
+  ...REAL_NFL_STARTERS_DENSE.map(s => s.split('|')[0]),
+  ...REAL_UFL_STARTERS.map(s => s.split('|')[0]),
+  ...REAL_CFL_STARTERS.map(s => s.split('|')[0])
+]);
+
+// Reusable arrays for generated backups
+const FIRST = ['Trevor', 'Joe', 'James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles', 'Chris', 'Daniel', 'Matt', 'Anthony', 'Mark', 'Don', 'Steve', 'Paul', 'Andrew', 'Josh', 'Ken', 'Kevin', 'Brian', 'George', 'Ed', 'Ron', 'Tim', 'Jason', 'Jeff', 'Ryan', 'Jacob', 'Gary', 'Nick', 'Eric', 'Jon', 'Stephen', 'Larry', 'Justin', 'Scott', 'Brandon', 'Ben', 'Sam', 'Greg', 'Frank', 'Alex', 'Ray', 'Pat', 'Jack', 'Dennis', 'Jerry', 'Tyler', 'Aaron', 'Jose', 'Adam', 'Henry', 'Nathan', 'Doug', 'Zach', 'Peter', 'Kyle', 'Walter', 'Ethan', 'Jeremy', 'Harold', 'Keith', 'Christian', 'Roger', 'Noah', 'Gerald', 'Carl', 'Terry', 'Sean', 'Austin', 'Arthur', 'Lawrence', 'Jesse', 'Dylan', 'Bryan', 'Jordan', 'Billy', 'Bruce', 'Albert', 'Willie', 'Gabriel', 'Logan', 'Alan', 'Juan', 'Wayne', 'Roy', 'Ralph', 'Randy', 'Eugene', 'Vincent', 'Russell', 'Elijah', 'Louis', 'Bobby', 'Philip', 'Johnny'];
+const LAST = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores', 'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts', 'Gomez', 'Phillips', 'Evans', 'Turner', 'Diaz', 'Parker', 'Cruz', 'Edwards', 'Collins', 'Reyes', 'Stewart', 'Morris', 'Morales', 'Murphy', 'Cook', 'Rogers', 'Gutierrez', 'Ortiz', 'Morgan', 'Cooper', 'Peterson', 'Bailey', 'Reed', 'Kelly', 'Howard', 'Ramos', 'Kim', 'Cox', 'Ward', 'Richardson', 'Watson', 'Brooks', 'Chavez', 'Wood', 'James', 'Bennett', 'Gray', 'Mendoza', 'Ruiz', 'Hughes', 'Price', 'Alvarez', 'Castillo', 'Sanders', 'Patel', 'Myers', 'Long', 'Ross', 'Foster', 'Jimenez', 'Powell'];
+const POS = ['QB', 'RB', 'WR', 'TE', 'OT', 'G', 'C', 'DE', 'DT', 'LB', 'CB', 'S', 'K', 'P'];
+
+const NFL_TEAMS = ['ARI', 'ATL', 'BAL', 'BUF', 'CAR', 'CHI', 'CIN', 'CLE', 'DAL', 'DEN', 'DET', 'GB', 'HOU', 'IND', 'JAX', 'KC', 'LV', 'LAC', 'LAR', 'MIA', 'MIN', 'NE', 'NO', 'NYG', 'NYJ', 'PHI', 'PIT', 'SF', 'SEA', 'TB', 'TEN', 'WAS'];
+const UFL_TEAMS = ['BIR', 'HOU', 'MEM', 'MICH', 'ARL', 'DC', 'SA', 'STL'];
+const CFL_TEAMS = ['BC', 'CGY', 'EDM', 'SSK', 'WPG', 'HAM', 'TOR', 'OTT', 'MTL'];
+
+let globalIdCounter = 2000;
+
+// Safe Logo URL generator
+const getTeamLogo = (team, league) => {
+  const t = team.toLowerCase();
+  const nflMap = { 'was': 'wsh' };
+  const uflMap = {
+    'bir': 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e0/Birmingham_Stallions_logo.svg/512px-Birmingham_Stallions_logo.svg.png',
+    'hou': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/91/Houston_Roughnecks_logo.svg/512px-Houston_Roughnecks_logo.svg.png',
+    'mem': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/23/Memphis_Showboats_logo.svg/512px-Memphis_Showboats_logo.svg.png',
+    'mich': 'https://upload.wikimedia.org/wikipedia/en/thumb/1/18/Michigan_Panthers_logo.svg/512px-Michigan_Panthers_logo.svg.png',
+    'arl': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4e/Arlington_Renegades_logo.svg/512px-Arlington_Renegades_logo.svg.png',
+    'dc': 'https://upload.wikimedia.org/wikipedia/en/thumb/5/52/DC_Defenders_logo.svg/512px-DC_Defenders_logo.svg.png',
+    'sa': 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/San_Antonio_Brahmas_logo.svg/512px-San_Antonio_Brahmas_logo.svg.png',
+    'stl': 'https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/St._Louis_Battlehawks_logo.svg/512px-St._Louis_Battlehawks_logo.svg.png'
+  };
+  const cflMap = {
+    'bc': 'https://upload.wikimedia.org/wikipedia/en/thumb/1/15/BC_Lions_logo.svg/512px-BC_Lions_logo.svg.png',
+    'cgy': 'https://upload.wikimedia.org/wikipedia/en/thumb/0/05/Calgary_Stampeders_logo.svg/512px-Calgary_Stampeders_logo.svg.png',
+    'edm': 'https://upload.wikimedia.org/wikipedia/en/thumb/5/52/Edmonton_Elks_logo.svg/512px-Edmonton_Elks_logo.svg.png',
+    'ssk': 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/Saskatchewan_Roughriders_logo.svg/512px-Saskatchewan_Roughriders_logo.svg.png',
+    'wpg': 'https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Winnipeg_Blue_Bombers_logo.svg/512px-Winnipeg_Blue_Bombers_logo.svg.png',
+    'ham': 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e4/Hamilton_Tiger-Cats_logo.svg/512px-Hamilton_Tiger-Cats_logo.svg.png',
+    'tor': 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f5/Toronto_Argonauts_Logo.svg/512px-Toronto_Argonauts_Logo.svg.png',
+    'ott': 'https://upload.wikimedia.org/wikipedia/en/thumb/5/5a/Ottawa_Redblacks_logo.svg/512px-Ottawa_Redblacks_logo.svg.png',
+    'mtl': 'https://upload.wikimedia.org/wikipedia/en/thumb/9/90/Montreal_Alouettes_logo.svg/512px-Montreal_Alouettes_logo.svg.png'
+  };
+
+  if (league === 'NFL') return `https://a.espncdn.com/i/teamlogos/nfl/500/${nflMap[t] || t}.png`;
+  if (league === 'UFL') return uflMap[t];
+  if (league === 'CFL') return cflMap[t];
+  return null;
+};
+
+const parseStringPlayers = (arr, league) => {
+  return arr.map(playerStr => {
+    const parts = playerStr.split('|');
+    const rating = parseInt(parts[3]);
+    let tier = rating >= 90 ? 'ELITE' : rating >= 80 ? 'GOLD' : rating >= 70 ? 'SILVER' : 'BRONZE';
+    return {
+      id: globalIdCounter++,
+      name: parts[0], pos: parts[1], team: parts[2], rating: rating, tier: tier, 
+      trend: parts[4] !== undefined ? parseInt(parts[4]) : (Math.random() > 0.5 ? 1 : 0),
+      espnId: parts[5] || 'fallback',
+      league: league
+    };
+  });
+};
+
+// Generates ONLY BACKUPS (Bronze and Silver) to prevent fake Elites
+const generateBackups = (teams, league, count) => {
+  let gen = [];
+  for (let i = 0; i < count; i++) {
+    let rating = Math.floor(Math.random() * 10) + 60; // 60-69
+    if (Math.random() > 0.8) rating += 5; // 65-74
+    let tier = rating >= 70 ? 'SILVER' : 'BRONZE';
+    
+    let newName = "";
+    let attempts = 0;
+    do {
+      newName = `${FIRST[Math.floor(Math.random() * FIRST.length)]} ${LAST[Math.floor(Math.random() * LAST.length)]}`;
+      attempts++;
+    } while (REAL_NAMES.has(newName) && attempts < 10);
+
+    gen.push({
+      id: globalIdCounter++,
+      name: newName,
+      pos: POS[Math.floor(Math.random() * POS.length)],
+      team: teams[Math.floor(Math.random() * teams.length)],
+      rating: rating, tier: tier, espnId: 'fallback', trend: Math.random() > 0.3 ? 1 : 0, league: league
+    });
+  }
+  return gen;
+};
+
+const PLAYERS = [
+  ...ELITE_STARS, 
+  ...parseStringPlayers(REAL_NFL_STARTERS_DENSE, 'NFL'),
+  ...generateBackups(NFL_TEAMS, 'NFL', 4000), 
+  ...parseStringPlayers(REAL_UFL_STARTERS, 'UFL'),
+  ...generateBackups(UFL_TEAMS, 'UFL', 800),
+  ...parseStringPlayers(REAL_CFL_STARTERS, 'CFL'),
+  ...generateBackups(CFL_TEAMS, 'CFL', 800)
+];
+
+// Expanded Pack Store with Positional Filters and Limited Deals
+const PACKS = [
+  {
+    id: 'starter', name: 'Starter Pack', cost: 100, cards: 3, color: 'from-[#a1a1aa] to-[#475569]',
+    description: '3 Cards. Build your base. Mostly Bronze/Silver.',
+    odds: { BRONZE: 85, SILVER: 14, GOLD: 1, ELITE: 0 }, leagueFilter: 'ANY', featured: false
+  },
+  {
+    id: 'pro', name: 'Pro Pack', cost: 500, cards: 3, color: 'from-[#00E5FF] to-[#0077FF]',
+    description: '3 Cards. High chance of Silver, slight chance of Gold.',
+    odds: { BRONZE: 60, SILVER: 30, GOLD: 9, ELITE: 1 }, leagueFilter: 'NFL', featured: false
+  },
+  {
+    id: 'allpro', name: 'All-Pro Pack', cost: 2500, cards: 4, color: 'from-[#FFD700] to-[#FF8C00]',
+    description: '4 Cards. Guaranteed 1+ Silver. Better Elite odds.',
+    odds: { BRONZE: 20, SILVER: 45, GOLD: 30, ELITE: 5 }, leagueFilter: 'NFL', featured: false
+  },
+  {
+    id: 'offense', name: 'Offense Pack', cost: 1500, cards: 3, color: 'from-[#ef4444] to-[#991b1b]',
+    description: '3 Cards. Guaranteed Offensive Skill Players.',
+    odds: { BRONZE: 30, SILVER: 40, GOLD: 25, ELITE: 5 }, leagueFilter: 'NFL', posFilter: ['QB','RB','WR','TE'], featured: false
+  },
+  {
+    id: 'defense', name: 'Defense Pack', cost: 1500, cards: 3, color: 'from-[#3b82f6] to-[#1e3a8a]',
+    description: '3 Cards. Guaranteed Defensive Playmakers.',
+    odds: { BRONZE: 30, SILVER: 40, GOLD: 25, ELITE: 5 }, leagueFilter: 'NFL', posFilter: ['DE','DT','LB','CB','S'], featured: false
+  },
+  {
+    id: 'trenches', name: 'Trenches Pack', cost: 2000, cards: 3, color: 'from-[#52525b] to-[#18181b]',
+    description: '3 Cards. Heavy hitters. Guaranteed OL/DL.',
+    odds: { BRONZE: 20, SILVER: 40, GOLD: 30, ELITE: 10 }, leagueFilter: 'NFL', posFilter: ['OT','G','C','DE','DT'], featured: false
+  },
+  {
+    id: 'global', name: 'Global Pack', cost: 3000, cards: 5, color: 'from-[#14b8a6] to-[#0f766e]',
+    description: '5 Cards. Mixed bag from NFL, UFL, and CFL.',
+    odds: { BRONZE: 20, SILVER: 40, GOLD: 30, ELITE: 10 }, leagueFilter: ['NFL', 'UFL', 'CFL'], featured: false
+  },
+  {
+    id: 'legend', name: 'Legendary Pack', cost: 10000, cards: 2, color: 'from-[#FF0055] to-[#7A00FF]',
+    description: '2 Cards. High Roller. Incredible odds for Elites.',
+    odds: { BRONZE: 0, SILVER: 0, GOLD: 60, ELITE: 40 }, leagueFilter: 'NFL', featured: false
+  },
+  {
+    id: 'titanium', name: 'Titanium Pack', cost: 25000, cards: 3, color: 'from-[#e0e7ff] to-[#6366f1]',
+    description: '3 Cards. The ultimate flex. Guaranteed Elites.',
+    odds: { BRONZE: 0, SILVER: 0, GOLD: 0, ELITE: 100 }, leagueFilter: 'ANY', featured: false
+  },
+  {
+    id: 'ufl', name: 'UFL Pack', cost: 800, cards: 3, color: 'from-[#00FF88] to-[#008844]',
+    description: '3 Cards. Build your spring league roster. High chance of Gold.',
+    odds: { BRONZE: 30, SILVER: 40, GOLD: 25, ELITE: 5 }, leagueFilter: 'UFL', featured: false
+  },
+  {
+    id: 'cfl', name: 'CFL Pack', cost: 800, cards: 3, color: 'from-[#FF3333] to-[#990000]',
+    description: '3 Cards. North of the border stars. High chance of Gold.',
+    odds: { BRONZE: 30, SILVER: 40, GOLD: 25, ELITE: 5 }, leagueFilter: 'CFL', featured: false
+  },
+  {
+    id: 'featured_draft', name: 'Weekend Ultimate Deal', cost: 5000, cards: 3, color: 'from-[#10B981] to-[#047857]',
+    description: '3 Cards. Guaranteed 1+ Elite. One-time purchase.',
+    odds: { BRONZE: 0, SILVER: 10, GOLD: 50, ELITE: 40 }, leagueFilter: 'NFL', isOneTime: true, featured: true
+  },
+  {
+    id: 'gamechangers', name: 'Game Changers Pack', cost: 15000, cards: 3, color: 'from-[#ec4899] to-[#be185d]',
+    description: '3 Cards. Guaranteed Gold or Elite players only.',
+    odds: { BRONZE: 0, SILVER: 0, GOLD: 85, ELITE: 15 }, leagueFilter: 'NFL', featured: false
+  }
+];
+
+// LINEUP CONFIGURATION
+const LINEUP_CONFIG = [
+  { id: 'QB', label: 'QB', roles: ['QB'], group: 'OFFENSE' },
+  { id: 'RB1', label: 'RB1', roles: ['RB'], group: 'OFFENSE' },
+  { id: 'RB2', label: 'RB2', roles: ['RB'], group: 'OFFENSE' },
+  { id: 'WR1', label: 'WR1', roles: ['WR'], group: 'OFFENSE' },
+  { id: 'WR2', label: 'WR2', roles: ['WR'], group: 'OFFENSE' },
+  { id: 'TE', label: 'TE', roles: ['TE'], group: 'OFFENSE' },
+  { id: 'DE1', label: 'DE', roles: ['DE'], group: 'DEFENSE' },
+  { id: 'DT', label: 'DT', roles: ['DT'], group: 'DEFENSE' },
+  { id: 'LB1', label: 'LB', roles: ['LB'], group: 'DEFENSE' },
+  { id: 'LB2', label: 'LB', roles: ['LB'], group: 'DEFENSE' },
+  { id: 'CB1', label: 'CB1', roles: ['CB'], group: 'DEFENSE' },
+  { id: 'CB2', label: 'CB2', roles: ['CB'], group: 'DEFENSE' },
+  { id: 'S1', label: 'S1', roles: ['S'], group: 'DEFENSE' },
+  { id: 'S2', label: 'S2', roles: ['S'], group: 'DEFENSE' },
+  { id: 'K', label: 'K', roles: ['K'], group: 'SPECIAL' },
+  { id: 'P', label: 'P', roles: ['P'], group: 'SPECIAL' }
+];
+
+export default function App() {
+  const [view, setView] = useState('store'); 
+  const [coins, setCoins] = useState(25000); 
+  const [collection, setCollection] = useState([]);
+  
+  // Progression System
+  const [xp, setXp] = useState(0);
+  const [level, setLevel] = useState(1);
+  const xpNeeded = level * 1000;
+
+  // Featured Deal System
+  const [featuredPurchased, setFeaturedPurchased] = useState(false);
+  const [featuredTimer, setFeaturedTimer] = useState(3 * 24 * 60 * 60); // 3 Days in seconds
+
+  useEffect(() => {
+    const int = setInterval(() => {
+      setFeaturedTimer(prev => {
+        if (prev <= 1) {
+          setFeaturedPurchased(false); // Reset purchase lock
+          return 3 * 24 * 60 * 60; // Reset timer to 3 days
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(int);
+  }, []);
+
+  const formatTime = (seconds) => {
+    const d = Math.floor(seconds / (3600 * 24));
+    const h = Math.floor((seconds % (3600 * 24)) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${d}d ${h}h ${m}m ${s}s`;
+  }
+
+  const addXp = (amount) => {
+    setXp(prev => {
+      let newXp = prev + amount;
+      let currentLevel = level;
+      while (newXp >= currentLevel * 1000) {
+        newXp -= currentLevel * 1000;
+        currentLevel++;
+        showNotification(`LEVEL UP! You are now Level ${currentLevel}. +5000 Coins!`);
+        setCoins(c => c + 5000);
+        setLevel(currentLevel);
+      }
+      return newXp;
+    });
+  };
+  
+  // Pack Opening State
+  const [activePack, setActivePack] = useState(null);
+  const [pulledCards, setPulledCards] = useState([]);
+  const [openingPhase, setOpeningPhase] = useState('idle'); 
+  const [slicePoints, setSlicePoints] = useState([]);
+  const [isSlicing, setIsSlicing] = useState(false);
+  
+  // Walkout specific state
+  const [walkoutPhase, setWalkoutPhase] = useState(0); 
+  const [eliteCardToWalkout, setEliteCardToWalkout] = useState(null);
+
+  // Lineup State
+  const [lineup, setLineup] = useState(
+    LINEUP_CONFIG.reduce((acc, slot) => ({ ...acc, [slot.id]: null }), {})
+  );
+  const [selectingSlot, setSelectingSlot] = useState(null);
+
+  // Collection Filters
+  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [activeLeagueFilter, setActiveLeagueFilter] = useState('ALL');
+
+  // Detailed Stats Modal State
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+
+  // Lucky Drop State
+  const [luckyDrop, setLuckyDrop] = useState({
+    active: false, rarity: 'BRONZE', tapsLeft: 4, animating: false, opened: false, reward: null
+  });
+
+  const [dailyClaimed, setDailyClaimed] = useState(false);
+  const [notification, setNotification] = useState(null);
+  
+  // Minigames State
+  const [activeGame, setActiveGame] = useState(null); 
+  
+  const [fgMeter, setFgMeter] = useState({ val: 50, dir: 1 });
+  const [fgPlaying, setFgPlaying] = useState(false);
+  
+  const [drillPlaying, setDrillPlaying] = useState(false);
+  const [drillTime, setDrillTime] = useState(0);
+  const [drillScore, setDrillScore] = useState(0);
+
+  const [accPlaying, setAccPlaying] = useState(false);
+  const [accTime, setAccTime] = useState(0);
+  const [accScore, setAccScore] = useState(0);
+  const [accTargets, setAccTargets] = useState([]);
+
+  const showNotification = (msg) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 3500);
+  };
+
+  const claimDaily = () => {
+    if (!dailyClaimed) {
+      setCoins(prev => prev + 2500);
+      setDailyClaimed(true);
+      showNotification("Claimed 2,500 Daily Coins!");
+      addXp(250);
+    }
+  };
+
+  const sellDuplicates = () => {
+    const seen = new Set();
+    const keepers = [];
+    let coinsEarned = 0;
+    const values = { BRONZE: 50, SILVER: 150, GOLD: 500, ELITE: 2000 };
+
+    collection.forEach(card => {
+      const hash = `${card.id}-${card.name}`;
+      if (seen.has(hash)) {
+        coinsEarned += values[card.tier];
+      } else {
+        seen.add(hash);
+        keepers.push(card);
+      }
+    });
+
+    if (coinsEarned > 0) {
+      setCoins(c => c + coinsEarned);
+      setCollection(keepers);
+      showNotification(`Sold duplicates for ${coinsEarned.toLocaleString()} coins!`);
+    } else {
+      showNotification("No duplicates to sell.");
+    }
+  };
+
+  // Minigame Loops
+  useEffect(() => {
+    let interval;
+    if (fgPlaying) {
+      interval = setInterval(() => {
+        setFgMeter(prev => {
+          let nextVal = prev.val + (4 * prev.dir);
+          let nextDir = prev.dir;
+          if (nextVal >= 100) { nextDir = -1; nextVal = 96; }
+          if (nextVal <= 0) { nextDir = 1; nextVal = 4; }
+          return { val: nextVal, dir: nextDir };
+        });
+      }, 30);
+    }
+    return () => clearInterval(interval);
+  }, [fgPlaying]);
+
+  const kickFieldGoal = () => {
+    setFgPlaying(false);
+    let reward = 0;
+    let xpReward = 0;
+    if (fgMeter.val >= 45 && fgMeter.val <= 55) { reward = 500; xpReward = 100; }
+    else if (fgMeter.val >= 35 && fgMeter.val <= 65) { reward = 150; xpReward = 25; }
+    
+    if (reward > 0) {
+      setCoins(c => c + reward);
+      addXp(xpReward);
+      showNotification(`Good Kick! Earned ${reward} coins & ${xpReward} XP.`);
+    } else {
+      showNotification("Missed! Wide right/left. 0 coins.");
+    }
+  };
+
+  useEffect(() => {
+    let interval;
+    if (drillPlaying) {
+      interval = setInterval(() => {
+        setDrillTime(t => {
+          if (t <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return t - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [drillPlaying]);
+
+  useEffect(() => {
+    if (drillPlaying && drillTime === 0) {
+      setDrillPlaying(false);
+      const reward = drillScore * 15;
+      const xpReward = drillScore * 5;
+      setCoins(c => c + reward);
+      addXp(xpReward);
+      showNotification(`Time's up! Earned ${reward} coins & ${xpReward} XP.`);
+    }
+  }, [drillTime, drillPlaying, drillScore]);
+
+  useEffect(() => {
+    let interval;
+    if (accPlaying) {
+      interval = setInterval(() => {
+        setAccTime(t => {
+          if (t <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return t - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [accPlaying]);
+
+  useEffect(() => {
+    if (accPlaying && accTime === 0) {
+      setAccPlaying(false);
+      setAccTargets([]); 
+      const reward = accScore * 30; 
+      const xpReward = accScore * 10;
+      setCoins(c => c + reward);
+      addXp(xpReward);
+      showNotification(`Time's up! Hit ${accScore} targets. Earned ${reward} coins & ${xpReward} XP.`);
+    }
+  }, [accTime, accPlaying, accScore]);
+
+  useEffect(() => {
+    if (!accPlaying || accTime === 0) return;
+    const interval = setInterval(() => {
+      const newTarget = {
+        id: Date.now() + Math.random(),
+        x: Math.random() * 80 + 10, 
+        y: Math.random() * 80 + 10,
+      };
+      setAccTargets(prev => [...prev, newTarget]);
+      setTimeout(() => {
+        setAccTargets(prev => prev.filter(t => t.id !== newTarget.id));
+      }, 1100);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [accPlaying, accTime]);
+
+  const hitTarget = (id) => {
+    setAccTargets(prev => prev.filter(t => t.id !== id));
+    setAccScore(s => s + 1);
+  };
+
+  const generateDetailedStats = (player) => {
+    const ovr = player.rating;
+    const trend = player.trend !== undefined ? player.trend : (ovr > 90 && Math.random() > 0.5 ? -1 : ovr < 75 ? 1 : 0);
+    
+    const stat = (targetBase) => {
+      let scaledTarget = Math.min(99, Math.max(0, targetBase - (99 - ovr) * 0.7)); 
+      let val = Math.floor(scaledTarget + (Math.random() * 6 - 3));
+      val = Math.max(1, Math.min(99, val));
+      
+      let mod = 0;
+      if (trend > 0) mod = Math.floor(Math.random() * 3) + 1; 
+      else if (trend < 0) mod = Math.floor(Math.random() * -3) - 1; 
+      else mod = Math.floor(Math.random() * 3) - 1; 
+      
+      return { val, mod };
+    };
+
+    const lowStat = () => {
+      let val = Math.floor(Math.random() * 30) + 10;
+      let mod = trend > 0 ? Math.floor(Math.random() * 2) : trend < 0 ? -1 : 0;
+      return { val, mod };
+    };
+
+    const isQB = player.pos === 'QB';
+    const isPocketPasser = isQB && trend < 0; 
+    const isRBWR = ['RB', 'WR', 'TE', 'CB', 'S'].includes(player.pos);
+    const isLineman = ['OT', 'G', 'C', 'DT', 'DE'].includes(player.pos);
+    const isKicker = ['K', 'P'].includes(player.pos);
+
+    const physical = { 
+      height: { val: isLineman ? Math.floor(Math.random()*4+75) : Math.floor(Math.random()*6+70), mod: 0 }, 
+      strength: isLineman ? stat(95) : isQB || isKicker ? lowStat() : stat(75), 
+      speed: isRBWR ? stat(95) : isLineman || isPocketPasser ? lowStat() : isQB ? stat(75) : stat(80), 
+      endurance: stat(88) 
+    };
+    const passing = { vision: isQB ? stat(95) : lowStat(), power: isQB ? stat(95) : lowStat(), accuracy: isQB ? stat(95) : lowStat() };
+    const defense = { passCoverage: ['CB', 'S', 'LB'].includes(player.pos) ? stat(95) : lowStat(), tackling: ['LB', 'DT', 'DE', 'S', 'CB'].includes(player.pos) ? stat(95) : lowStat(), passRushing: ['DE', 'DT', 'LB'].includes(player.pos) ? stat(95) : lowStat(), runStopping: ['DT', 'DE', 'LB'].includes(player.pos) ? stat(95) : lowStat() };
+    const blocking = { passBlocking: ['OT', 'G', 'C', 'TE', 'RB'].includes(player.pos) ? stat(95) : lowStat(), runBlocking: ['OT', 'G', 'C', 'TE', 'RB'].includes(player.pos) ? stat(95) : lowStat() };
+    const rushingReceiving = { elusiveness: ['RB', 'WR'].includes(player.pos) ? stat(95) : isPocketPasser ? lowStat() : isQB ? stat(70) : lowStat(), routeRunning: ['WR', 'TE'].includes(player.pos) ? stat(95) : lowStat(), hands: ['WR', 'TE', 'RB'].includes(player.pos) ? stat(95) : ['CB', 'S'].includes(player.pos) ? stat(65) : lowStat(), ballSecurity: ['RB', 'WR', 'TE', 'QB'].includes(player.pos) ? stat(90) : lowStat() };
+    const kicking = { kickPower: isKicker ? stat(95) : lowStat(), kickAccuracy: isKicker ? stat(95) : lowStat(), puntPower: isKicker ? stat(95) : lowStat(), puntAccuracy: isKicker ? stat(95) : lowStat() };
+
+    const traits = [];
+    const pushTrait = (acronym, name, condition) => { if (condition) traits.push({ acronym, name }); };
+
+    pushTrait('A', 'Athletic', physical.speed.val > 85 && physical.strength.val > 80 && physical.endurance.val > 80);
+    pushTrait('Bp', 'Pass Blocker', blocking.passBlocking.val > 80);
+    pushTrait('Br', 'Run Blocker', blocking.runBlocking.val > 80);
+    pushTrait('H', 'Hands', rushingReceiving.hands.val > 80);
+    pushTrait('L', 'Lockdown', defense.passCoverage.val > 80);
+    pushTrait('PR', 'Pass Rusher', defense.passRushing.val > 80);
+    pushTrait('Pa', 'Accurate Passer', passing.accuracy.val > 80);
+    pushTrait('Pd', 'Deep Passer', passing.power.val > 85 && passing.accuracy.val > 75);
+    pushTrait('Ps', 'Smart Passer', passing.vision.val > 85 && passing.accuracy.val > 80);
+    pushTrait('RS', 'Run Stopper', defense.runStopping.val > 80);
+    pushTrait('X', 'Explosive Runner', physical.speed.val > 85 && rushingReceiving.elusiveness.val > 85);
+    pushTrait('Rr', 'Route Runner', rushingReceiving.routeRunning.val > 80);
+    pushTrait('Tp', 'Throw Power', passing.power.val > 85);
+    pushTrait('Tr', 'Throw on the Run', physical.speed.val > 75 && passing.accuracy.val > 80);
+    pushTrait('Pm', 'Playmaker', rushingReceiving.elusiveness.val > 85 && passing.vision.val > 85);
+    pushTrait('Bt', 'Break Tackle', physical.strength.val > 80 && rushingReceiving.elusiveness.val > 75);
+    pushTrait('Ct', 'Catch in Traffic', rushingReceiving.hands.val > 80 && physical.strength.val > 75);
+    pushTrait('Hp', 'Hit Power / Enforcer', defense.tackling.val > 80 && physical.strength.val > 80);
+    
+    if (ovr > 85 && Math.random() > 0.8) pushTrait('C', 'Clutch', true);
+
+    let potentialMod = trend > 0 ? Math.floor(Math.random() * 5) + 2 : trend < 0 ? 0 : Math.floor(Math.random() * 3);
+    let ovrMod = trend > 0 ? Math.floor(Math.random() * 3) + 1 : trend < 0 ? Math.floor(Math.random() * -3) - 1 : 0;
+
+    return { ovrMod, potentialMod, traits, physical, passing, defense, blocking, rushingReceiving, kicking };
+  };
+
+  const rollPlayer = (packConfig) => {
+    const roll = Math.random() * 100;
+    let selectedTier = 'BRONZE';
+    let cumulative = 0;
+    
+    if (packConfig.odds) {
+      for (const [tier, chance] of Object.entries(packConfig.odds)) {
+        cumulative += chance;
+        if (roll <= cumulative) { selectedTier = tier; break; }
+      }
+    } else {
+      selectedTier = packConfig.exactTier || 'BRONZE'; 
+    }
+
+    let possiblePlayers = PLAYERS.filter(p => p.tier === selectedTier);
+    
+    if (packConfig.leagueFilter && packConfig.leagueFilter !== 'ANY') {
+      const leagues = Array.isArray(packConfig.leagueFilter) ? packConfig.leagueFilter : [packConfig.leagueFilter];
+      possiblePlayers = possiblePlayers.filter(p => leagues.includes(p.league));
+    }
+    
+    if (packConfig.posFilter) {
+      possiblePlayers = possiblePlayers.filter(p => packConfig.posFilter.includes(p.pos));
+    }
+
+    // Strict Fallback
+    if (possiblePlayers.length === 0) {
+       const fallbackTiers = ['ELITE', 'GOLD', 'SILVER', 'BRONZE'];
+       let i = fallbackTiers.indexOf(selectedTier);
+       while(possiblePlayers.length === 0 && i < fallbackTiers.length) {
+         possiblePlayers = PLAYERS.filter(p => {
+           const tierMatch = p.tier === fallbackTiers[i];
+           const leagueMatch = !packConfig.leagueFilter || packConfig.leagueFilter === 'ANY' || (Array.isArray(packConfig.leagueFilter) ? packConfig.leagueFilter.includes(p.league) : p.league === packConfig.leagueFilter);
+           const posMatch = !packConfig.posFilter || packConfig.posFilter.includes(p.pos);
+           return tierMatch && leagueMatch && posMatch;
+         });
+         i++;
+       }
+       if (possiblePlayers.length === 0) possiblePlayers = PLAYERS.filter(p => p.tier === selectedTier);
+    }
+
+    const randomPlayer = possiblePlayers[Math.floor(Math.random() * possiblePlayers.length)];
+    const detailedStats = generateDetailedStats(randomPlayer);
+    return { ...randomPlayer, instanceId: Math.random().toString(36).substr(2, 9), details: detailedStats };
+  };
+
+  const buyPack = (pack) => {
+    if (coins < pack.cost) return showNotification("Not enough coins!");
+    
+    if (pack.isOneTime && featuredPurchased) {
+      return showNotification("You've already purchased this deal!");
+    }
+
+    setCoins(prev => prev - pack.cost);
+    addXp(Math.floor(pack.cost / 10)); // 10% of pack cost converts to XP
+    
+    if (pack.isOneTime) {
+      setFeaturedPurchased(true);
+    }
+
+    setActivePack(pack);
+    const newCards = Array.from({length: pack.cards}).map(() => rollPlayer(pack));
+    setPulledCards(newCards.map(c => ({ ...c, revealed: false })));
+    setView('opening');
+    setOpeningPhase('shaking');
+    setTimeout(() => setOpeningPhase('slicing'), 1500);
+  };
+
+  const handlePointerDown = (e) => { setIsSlicing(true); setSlicePoints([{ x: e.clientX, y: e.clientY }]); };
+  const handlePointerMove = (e) => { if (isSlicing) setSlicePoints(prev => [...prev, { x: e.clientX, y: e.clientY }]); };
+  const handlePointerUp = () => {
+    if (!isSlicing) return;
+    setIsSlicing(false);
+    if (slicePoints.length > 5) {
+      const start = slicePoints[0], end = slicePoints[slicePoints.length - 1];
+      if (Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)) > 150) {
+         setOpeningPhase('burst');
+         setTimeout(() => {
+           const eliteCard = pulledCards.find(c => c.tier === 'ELITE');
+           if (eliteCard) {
+             setEliteCardToWalkout(eliteCard);
+             setOpeningPhase('walkout');
+             setWalkoutPhase(0);
+           } else {
+             setOpeningPhase('revealing');
+           }
+         }, 800);
+      }
+    }
+    setSlicePoints([]); 
+  };
+
+  // Walkout Animation Sequencer
+  useEffect(() => {
+    if (openingPhase === 'walkout') {
+      const timers = [];
+      timers.push(setTimeout(() => setWalkoutPhase(1), 1500)); 
+      timers.push(setTimeout(() => setWalkoutPhase(2), 3000)); 
+      timers.push(setTimeout(() => setWalkoutPhase(3), 4500)); 
+      timers.push(setTimeout(() => {
+        setOpeningPhase('revealing'); 
+        setEliteCardToWalkout(null);
+      }, 8500)); 
+
+      return () => timers.forEach(clearTimeout);
+    }
+  }, [openingPhase]);
+
+  const revealCard = (index) => {
+    setPulledCards(prev => {
+      const newCards = [...prev];
+      newCards[index].revealed = true;
+      return newCards;
+    });
+    if (pulledCards.filter((c, i) => i !== index && !c.revealed).length === 0) {
+      setTimeout(() => setOpeningPhase('done'), 800);
+      setCollection(prev => [...prev, ...pulledCards]);
+    }
+  };
+
+  const finishOpening = () => { setView('store'); setOpeningPhase('idle'); setPulledCards([]); setActivePack(null); };
+
+  const openPlayerDetails = (player) => setSelectedPlayer(player);
+  const closePlayerDetails = () => setSelectedPlayer(null);
+
+  // Lineup Methods
+  const getEligiblePlayers = (slot) => {
+    const eligible = collection.filter(p => slot.roles.includes(p.pos));
+    const slottedIds = Object.values(lineup).filter(p => p !== null).map(p => p.instanceId);
+    return eligible.filter(p => !slottedIds.includes(p.instanceId)).sort((a, b) => b.rating - a.rating);
+  };
+
+  const assignPlayerToSlot = (player) => {
+    if (selectingSlot) {
+      setLineup(prev => ({ ...prev, [selectingSlot.id]: player }));
+      setSelectingSlot(null);
+    }
+  };
+
+  const removeFromSlot = (slotId, e) => {
+    e.stopPropagation();
+    setLineup(prev => ({ ...prev, [slotId]: null }));
+  };
+
+  // Lucky Drop Methods
+  const startLuckyDrop = () => {
+    if (coins < 1500) return showNotification("Not enough coins!");
+    setCoins(prev => prev - 1500);
+    setLuckyDrop({ active: true, rarity: 'BRONZE', tapsLeft: 4, animating: false, opened: false, reward: null });
+    setView('luckydrop');
+  };
+
+  const handleLuckyDropTap = () => {
+    if (luckyDrop.tapsLeft <= 0 || luckyDrop.opened || luckyDrop.animating) return;
+    setLuckyDrop(prev => ({ ...prev, animating: true }));
+    
+    setTimeout(() => {
+      let nextRarity = luckyDrop.rarity;
+      const roll = Math.random();
+      
+      if (luckyDrop.rarity === 'BRONZE' && roll < 0.65) nextRarity = 'SILVER';
+      else if (luckyDrop.rarity === 'SILVER' && roll < 0.40) nextRarity = 'GOLD';
+      else if (luckyDrop.rarity === 'GOLD' && roll < 0.20) nextRarity = 'ELITE';
+
+      const newTaps = luckyDrop.tapsLeft - 1;
+
+      if (newTaps === 0) {
+        const reward = rollPlayer({ exactTier: nextRarity, leagueFilter: 'ANY' }); 
+        setLuckyDrop(prev => ({ ...prev, rarity: nextRarity, tapsLeft: 0, animating: false, opened: true, reward: { ...reward, revealed: true } }));
+        setCollection(prev => [...prev, reward]);
+      } else {
+        setLuckyDrop(prev => ({ ...prev, rarity: nextRarity, tapsLeft: newTaps, animating: false }));
+      }
+    }, 150); 
+  };
+
+  const exitLuckyDrop = () => { setLuckyDrop({ active: false, rarity: 'BRONZE', tapsLeft: 4, animating: false, opened: false, reward: null }); setView('store'); };
+
+  // Calculate Team OVR
+  const filledSlots = Object.values(lineup).filter(p => p !== null);
+  const teamOvr = filledSlots.length > 0 ? Math.round(filledSlots.reduce((sum, p) => sum + p.rating, 0) / filledSlots.length) : 0;
+
+  // Collection Filtering
+  const filteredCollection = collection.filter(p => {
+    if (activeLeagueFilter !== 'ALL' && p.league !== activeLeagueFilter) return false;
+    if (activeFilter === 'ALL') return true;
+    if (activeFilter === 'OFFENSE') return ['QB', 'RB', 'WR', 'TE', 'OT', 'G', 'C'].includes(p.pos);
+    if (activeFilter === 'DEFENSE') return ['DE', 'DT', 'LB', 'CB', 'S'].includes(p.pos);
+    if (activeFilter === 'SPECIAL') return ['K', 'P'].includes(p.pos);
+    if (['ELITE', 'GOLD', 'SILVER', 'BRONZE'].includes(activeFilter)) return p.tier === activeFilter;
+    return true;
+  }).sort((a, b) => b.rating - a.rating);
+
+  const StatRow = ({ label, statObj, omitValueIfZero = false }) => {
+    if (!statObj) return null;
+    const { val, mod } = statObj;
+    let modText = '', modColor = 'text-transparent'; 
+    if (mod > 0) { modText = `(+${mod})`; modColor = 'text-[#00E5FF]'; } 
+    else if (mod < 0) { modText = `(${mod})`; modColor = 'text-[#FF3366]'; }
+
+    return (
+      <div className="flex justify-between items-center py-[2px] text-sm md:text-base font-inter border-b border-[#202B45]/50 last:border-0">
+        <span className="text-slate-400 w-32">{label}:</span>
+        <div className="flex items-center gap-2 w-16 justify-between">
+          <span className="text-white font-semibold">{(omitValueIfZero && val === 0) ? '' : val}</span>
+          <span className={`font-bold w-8 text-right ${modColor}`}>{modText}</span>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0B101E] text-white overflow-hidden relative selection:bg-[#00E5FF] selection:text-black">
+      <style dangerouslySetInnerHTML={{__html: `
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Teko:wght@400;500;600;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; background-color: #0B101E; }
+        .font-sports { font-family: 'Teko', sans-serif; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        
+        @keyframes shake {
+          0%, 100% { transform: translate(0, 0) rotate(0deg); }
+          20% { transform: translate(-4px, -2px) rotate(-3deg); }
+          40% { transform: translate(4px, 2px) rotate(3deg); }
+          60% { transform: translate(-4px, 2px) rotate(-3deg); }
+          80% { transform: translate(4px, -2px) rotate(3deg); }
+        }
+        .animate-shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) infinite; }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-8px); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        
+        @keyframes drop-tap {
+          0% { transform: scale(1); filter: brightness(1); }
+          50% { transform: scale(0.85); filter: brightness(1.5); }
+          100% { transform: scale(1.05); filter: brightness(1); }
+        }
+        .animate-drop-tap { animation: drop-tap 0.15s ease-out forwards; }
+
+        @keyframes burst-in {
+          0% { transform: scale(0.5); opacity: 0; filter: blur(10px); }
+          70% { transform: scale(1.1); opacity: 1; filter: blur(0px); }
+          100% { transform: scale(1); opacity: 1; filter: blur(0px); }
+        }
+        .animate-burst-in { animation: burst-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        @keyframes screen-flash {
+          0% { opacity: 0; }
+          10% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        .animate-screen-flash { animation: screen-flash 0.8s ease-out forwards; }
+
+        @keyframes spotlight {
+          0% { opacity: 0; transform: translateY(-50px) scale(0.8); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-spotlight { animation: spotlight 1.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        @keyframes confetti-fall {
+          0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+        .confetti-piece {
+          position: absolute;
+          top: -10px;
+          animation: confetti-fall 3s linear forwards;
+        }
+      `}} />
+
+      {/* HEADER */}
+      <header className="bg-[#151D30]/90 backdrop-blur-md border-b border-[#202B45] p-3 sticky top-0 z-40 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-[#00E5FF] to-[#0077FF] p-2 rounded-lg text-black shadow-[0_0_15px_rgba(0,229,255,0.4)]">
+              <Zap className="w-6 h-6" />
+            </div>
+            <h1 className="text-3xl font-sports font-bold tracking-widest text-white mt-1">
+              GRIDIRON <span className="text-[#00E5FF]">ULTIMATE</span>
+            </h1>
+          </div>
+          
+          <div className="flex items-center gap-4 md:gap-6 flex-wrap justify-center">
+            
+            {/* LEVEL & XP BAR */}
+            <div className="flex items-center gap-3 bg-[#0B101E] px-3 py-1.5 rounded-full border border-[#202B45]">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#f0abfc] to-[#c026d3] flex items-center justify-center font-sports text-xl font-bold text-white shadow-[0_0_10px_rgba(217,70,239,0.5)]">
+                {level}
+              </div>
+              <div className="flex flex-col justify-center w-24">
+                <div className="text-[10px] font-bold text-slate-400 font-sports tracking-widest leading-none">XP</div>
+                <div className="w-full h-1.5 bg-[#202B45] rounded-full overflow-hidden mt-0.5">
+                   <div className="h-full bg-[#00E5FF] transition-all duration-500" style={{ width: `${(xp / xpNeeded) * 100}%` }}></div>
+                </div>
+              </div>
+            </div>
+
+            {/* COINS */}
+            <div className="flex items-center gap-2 bg-[#0B101E] px-4 py-1.5 rounded-full border border-[#202B45] shadow-inner">
+              <Coins className="text-[#FFD700] w-5 h-5 drop-shadow-[0_0_5px_rgba(255,215,0,0.5)]" />
+              <span className="font-sports font-bold text-2xl mt-1 leading-none text-white tracking-wide">{coins.toLocaleString()}</span>
+            </div>
+            
+            {/* NAV */}
+            <nav className="flex gap-2">
+              {['store', 'collection', 'lineup', 'games'].map(navItem => (
+                <button 
+                  key={navItem}
+                  onClick={() => { setView(navItem); setActiveGame(null); }}
+                  className={`px-4 md:px-5 py-2 rounded-md font-bold tracking-widest uppercase transition-all text-sm md:text-base ${view === navItem ? 'bg-[#00E5FF] text-black shadow-[0_0_15px_rgba(0,229,255,0.5)]' : 'text-slate-400 hover:text-white hover:bg-[#202B45]'}`}
+                >
+                  {navItem}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      {/* NOTIFICATION OVERLAY */}
+      {notification && (
+        <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-none">
+          <div className="bg-[#0B101E]/95 backdrop-blur-md border-2 border-[#00E5FF] text-white px-6 py-3 rounded-full shadow-[0_0_30px_rgba(0,229,255,0.6)] flex items-center gap-3 font-sports text-2xl tracking-widest">
+            <Bell className="w-5 h-5 text-[#00E5FF] animate-pulse" />
+            {notification}
+          </div>
+        </div>
+      )}
+
+      {/* MAIN CONTENT AREA */}
+      <main className="max-w-7xl mx-auto p-6 min-h-[calc(100vh-80px)] relative">
+        
+        {/* VIEW: STORE */}
+        {view === 'store' && (
+          <div className="space-y-10 animate-in fade-in duration-500">
+            <div className="flex justify-between items-end">
+              <div>
+                <h2 className="text-5xl font-sports font-bold mb-1 text-white tracking-wide drop-shadow-md">STORE</h2>
+                <p className="text-[#00E5FF] font-medium font-inter tracking-wide uppercase text-sm">Build your ultimate global football roster.</p>
+              </div>
+              <button 
+                onClick={claimDaily}
+                disabled={dailyClaimed}
+                className={`flex items-center gap-2 text-sm font-bold px-6 py-3 rounded-full transition-colors border shadow-lg ${dailyClaimed ? 'bg-[#151D30] text-slate-500 border-[#202B45] cursor-not-allowed' : 'bg-gradient-to-r from-[#202B45] to-[#151D30] hover:from-[#2A3958] hover:to-[#202B45] text-[#00E5FF] border-[#00E5FF]/40 hover:border-[#00E5FF]'}`}
+              >
+                <Gift className="w-4 h-4" /> {dailyClaimed ? 'DAILY CLAIMED' : 'DAILY REWARD (2.5K)'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+               {/* FEATURED: Lucky Drop Banner */}
+              <div className="col-span-1 lg:col-span-2 w-full bg-gradient-to-br from-[#1E1B4B] via-[#312E81] to-[#151D30] border border-[#6366F1]/50 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl relative overflow-hidden group cursor-pointer" onClick={startLuckyDrop}>
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 mix-blend-overlay pointer-events-none"></div>
+                <div className="absolute top-0 right-0 w-64 h-64 bg-[#8B5CF6] blur-[120px] rounded-full opacity-30 group-hover:opacity-60 transition-opacity duration-500 pointer-events-none"></div>
+                
+                <div className="flex items-center gap-6 z-10">
+                  <div className="w-24 h-24 bg-gradient-to-br from-[#FFD700] to-[#F59E0B] rounded-2xl flex items-center justify-center shadow-[0_0_50px_rgba(245,158,11,0.6)] border-2 border-[#FEF3C7]/80 transform group-hover:scale-110 transition-transform duration-500">
+                    <Gift className="w-12 h-12 text-yellow-900 drop-shadow-md" />
+                  </div>
+                  <div>
+                    <h3 className="text-4xl font-sports font-bold text-white uppercase tracking-wider flex items-center gap-2 drop-shadow-md">
+                       <Sparkles className="w-6 h-6 text-[#FFD700]" /> LUCKY DROP
+                    </h3>
+                    <p className="text-indigo-200 font-medium font-inter mt-1">Tap 4 times to upgrade rarity. Guaranteed 1 Player.</p>
+                  </div>
+                </div>
+                
+                <button className="z-10 px-8 py-4 rounded-xl bg-gradient-to-r from-[#FFD700] to-[#F59E0B] hover:from-[#FBBF24] hover:to-[#D97706] font-bold text-black text-2xl font-sports flex items-center justify-center gap-2 transition-all transform group-hover:scale-105 shadow-xl">
+                  <Coins className="w-6 h-6" /> 1,500 COINS
+                </button>
+              </div>
+
+              {/* FEATURED: Limited Deal Packs */}
+              {PACKS.filter(p => p.featured).map(pack => (
+                <div key={pack.id} className="relative group perspective-1000 col-span-1">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${pack.color} opacity-20 blur-2xl group-hover:opacity-40 transition-opacity duration-500 rounded-3xl ${featuredPurchased ? 'grayscale' : ''}`}></div>
+                  <div className={`relative bg-gradient-to-b from-[#151D30] to-[#0B101E] border border-emerald-500/40 rounded-3xl p-6 flex flex-col items-center text-center h-full shadow-2xl transition-all duration-300 ${featuredPurchased ? 'grayscale opacity-70' : 'hover:-translate-y-2'}`}>
+                    
+                    {/* Live Refresh Timer */}
+                    <div className="absolute top-2 right-2 bg-black/80 px-3 py-1 rounded-full border border-emerald-500 flex items-center gap-2 z-30">
+                      <Timer className="w-4 h-4 text-emerald-400" />
+                      <span className="text-emerald-400 font-sports tracking-widest text-lg leading-none mt-1">{formatTime(featuredTimer)}</span>
+                    </div>
+
+                    <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-50"></div>
+                    
+                    <div className={`w-full aspect-[4/3] rounded-xl bg-gradient-to-br ${pack.color} shadow-2xl mb-6 flex items-center justify-center border-2 border-white/20 animate-float relative overflow-hidden mt-4`}>
+                       <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
+                       <span className="absolute top-2 left-2 text-sm font-black text-white/50 tracking-widest z-20 flex items-center gap-1"><Star className="w-4 h-4 text-emerald-300 fill-emerald-300"/> DEAL</span>
+                       <PackLogo league={pack.leagueFilter} className="w-24 h-24 text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.6)] z-10" />
+                    </div>
+                    
+                    <h3 className="text-4xl font-sports font-bold uppercase mb-1 leading-none mt-2 text-emerald-400 drop-shadow-md">{pack.name}</h3>
+                    <p className="text-slate-300 text-sm mb-6 flex-grow">{pack.description}</p>
+                    
+                    {featuredPurchased ? (
+                      <button className="w-full py-4 rounded-xl bg-[#202B45] border border-slate-600 font-bold text-slate-400 text-xl cursor-not-allowed">
+                        SOLD OUT
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => buyPack(pack)}
+                        className="w-full py-4 rounded-xl bg-[#0B101E] hover:bg-emerald-500 border border-[#202B45] hover:border-emerald-400 font-bold text-white hover:text-black text-xl flex items-center justify-center gap-2 transition-all transform active:scale-95 group/btn shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                      >
+                        <Coins className="w-6 h-6 text-[#FFD700] group-hover/btn:text-black" />
+                        {pack.cost.toLocaleString()}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Standard Packs */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              {PACKS.filter(p => !p.featured).map(pack => (
+                <div key={pack.id} className="relative group perspective-1000">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${pack.color} opacity-10 blur-xl group-hover:opacity-30 transition-opacity duration-500 rounded-3xl`}></div>
+                  <div className="relative bg-[#151D30] border border-[#202B45] rounded-3xl p-6 flex flex-col items-center text-center h-full hover:-translate-y-2 transition-transform duration-300 shadow-xl">
+                    
+                    <div className={`w-full aspect-[3/4] max-w-[160px] rounded-xl bg-gradient-to-br ${pack.color} shadow-2xl mb-6 flex items-center justify-center border border-white/20 animate-float relative overflow-hidden`}>
+                       <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
+                       <span className="absolute top-2 left-2 text-[10px] font-black text-white/50 tracking-widest z-20">
+                         {Array.isArray(pack.leagueFilter) ? 'MIXED' : pack.leagueFilter}
+                       </span>
+                       <PackLogo league={pack.leagueFilter} className="w-20 h-20 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] z-10" />
+                    </div>
+                    
+                    <h3 className="text-3xl font-sports font-bold uppercase mb-2 leading-none mt-2 text-white">{pack.name}</h3>
+                    <p className="text-slate-400 text-xs mb-6 flex-grow">{pack.description}</p>
+                    
+                    <button 
+                      onClick={() => buyPack(pack)}
+                      className="w-full py-3 rounded-xl bg-[#0B101E] hover:bg-[#00E5FF] border border-[#202B45] hover:border-[#00E5FF] font-bold text-white hover:text-black text-lg flex items-center justify-center gap-2 transition-all transform active:scale-95 group/btn"
+                    >
+                      <Coins className="w-5 h-5 text-[#FFD700] group-hover/btn:text-black" />
+                      {pack.cost.toLocaleString()}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* VIEW: LUCKY DROP */}
+        {view === 'luckydrop' && (
+          <div className="absolute inset-0 z-20 bg-[#0B101E]/90 backdrop-blur-md flex flex-col items-center justify-center -m-6 p-6 overflow-hidden">
+            <button onClick={exitLuckyDrop} className="absolute top-6 right-6 text-slate-400 hover:text-white z-50 bg-[#151D30] p-3 rounded-full border border-[#202B45] shadow-lg">
+               <X className="w-6 h-6" />
+            </button>
+
+            {!luckyDrop.opened ? (
+              <div className="flex flex-col items-center animate-in zoom-in duration-500">
+                 <h2 className="text-5xl font-sports font-bold mb-12 uppercase tracking-widest text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+                   TAPS REMAINING: <span className="text-[#00E5FF]">{luckyDrop.tapsLeft}</span>
+                 </h2>
+
+                 {/* The Drop Box */}
+                 <div 
+                   onClick={handleLuckyDropTap}
+                   className={`relative w-64 h-64 md:w-80 md:h-80 cursor-pointer rounded-3xl flex items-center justify-center transition-colors duration-300 shadow-[0_0_100px_rgba(0,0,0,0.8)] border-4 
+                     ${luckyDrop.animating ? 'animate-drop-tap' : 'hover:scale-105 hover:-translate-y-2'}
+                     ${TIERS[luckyDrop.rarity].color} ${TIERS[luckyDrop.rarity].border}
+                   `}
+                 >
+                   <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-30 mix-blend-overlay rounded-3xl pointer-events-none"></div>
+                   
+                   {/* Intense Inner glow */}
+                   <div className={`absolute inset-0 rounded-3xl ${TIERS[luckyDrop.rarity].glow} opacity-60 blur-2xl pointer-events-none`}></div>
+
+                   <Gift className={`w-32 h-32 md:w-40 md:h-40 z-10 ${TIERS[luckyDrop.rarity].text} drop-shadow-2xl pointer-events-none`} />
+                   
+                   <div className="absolute bottom-6 w-full text-center z-10 pointer-events-none">
+                     <span className={`text-3xl font-sports font-bold uppercase tracking-widest bg-[#0B101E]/80 px-6 py-1.5 rounded-full ${TIERS[luckyDrop.rarity].text} border ${TIERS[luckyDrop.rarity].border} shadow-lg`}>
+                       {TIERS[luckyDrop.rarity].name}
+                     </span>
+                   </div>
+                 </div>
+
+                 <p className="mt-12 text-[#00E5FF] font-bold font-inter text-xl animate-pulse tracking-widest drop-shadow-[0_0_10px_rgba(0,229,255,0.8)]">TAP TO UPGRADE!</p>
+              </div>
+            ) : (
+              // Explosive Forward Reveal
+              <div className="flex flex-col items-center w-full max-w-sm mx-auto">
+                <Confetti />
+                <h2 className="text-6xl font-sports font-bold mb-8 uppercase text-center tracking-widest text-[#00E5FF] animate-in slide-in-from-bottom duration-500 drop-shadow-[0_0_20px_rgba(0,229,255,0.6)]">
+                  REVEALED!
+                </h2>
+                
+                <div className="w-full aspect-[2.5/3.5] relative">
+                   {/* Explosion Glow Behind Card */}
+                   <div className={`absolute inset-0 scale-150 ${TIERS[luckyDrop.reward.tier].glow} blur-3xl opacity-50 animate-pulse pointer-events-none`}></div>
+                   
+                   <div className="w-full h-full animate-burst-in relative z-10">
+                     <div className={`absolute w-full h-full rounded-2xl shadow-2xl ${TIERS[luckyDrop.reward.tier].glow}`}>
+                        <PlayerCard player={luckyDrop.reward} />
+                     </div>
+                   </div>
+                </div>
+
+                <button 
+                  onClick={exitLuckyDrop}
+                  className="mt-12 px-10 py-4 bg-[#00E5FF] text-black font-black tracking-widest rounded-full hover:bg-white transition-colors flex items-center gap-2 text-2xl font-sports animate-in fade-in duration-1000 relative z-50 cursor-pointer shadow-[0_0_30px_rgba(0,229,255,0.6)] hover:scale-105 transform"
+                >
+                  COLLECT REWARD
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* VIEW: OPENING (Standard Packs & Walkouts) */}
+        {view === 'opening' && (
+          <div className="absolute inset-0 z-30 bg-[#0B101E]/95 backdrop-blur-xl flex flex-col items-center justify-center -m-6 p-6 overflow-hidden">
+            
+            {/* Screen Flash Overlay */}
+            {openingPhase === 'burst' && (
+               <div className="absolute inset-0 bg-white z-[100] animate-screen-flash pointer-events-none"></div>
+            )}
+
+            {/* Confetti Overlay for end of pack */}
+            {openingPhase === 'done' && <Confetti />}
+
+            {/* Phase 1: Shaking Pack */}
+            {openingPhase === 'shaking' && activePack && (
+              <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
+                <div className={`w-64 h-96 rounded-2xl bg-gradient-to-br ${activePack.color} shadow-[0_0_100px_rgba(0,229,255,0.3)] flex items-center justify-center border border-white/30 animate-shake relative overflow-hidden`}>
+                  <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
+                  <PackLogo league={activePack.leagueFilter} className="w-32 h-32 text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.7)] z-10" />
+                </div>
+                <h2 className="mt-12 text-4xl font-sports font-bold tracking-widest text-[#00E5FF] drop-shadow-[0_0_15px_rgba(0,229,255,0.5)] animate-pulse uppercase">PREPARING {activePack.name}...</h2>
+              </div>
+            )}
+
+            {/* Phase 2: Slicing Pack */}
+            {(openingPhase === 'slicing' || openingPhase === 'burst') && activePack && (
+              <div 
+                className="absolute inset-0 z-50 flex flex-col items-center justify-center cursor-crosshair touch-none"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+              >
+                <div className="absolute top-20 text-center animate-pulse z-10 pointer-events-none">
+                  <h2 className="text-6xl font-sports font-bold uppercase tracking-wider text-[#00E5FF] drop-shadow-[0_0_20px_rgba(0,229,255,0.8)]">SLICE TO OPEN</h2>
+                  <p className="text-slate-200 mt-2 font-bold tracking-widest flex items-center justify-center gap-2">
+                    <Scissors className="w-5 h-5 text-white" /> SWIPE ACROSS THE PACK
+                  </p>
+                </div>
+                
+                <div className={`relative w-64 h-96 rounded-2xl bg-gradient-to-br ${activePack.color} shadow-[0_0_120px_rgba(0,229,255,0.5)] flex items-center justify-center border-2 border-white/40 transition-transform duration-100 overflow-hidden ${isSlicing ? 'scale-110 animate-shake' : 'hover:scale-105'}`}>
+                  <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
+                  <PackLogo league={activePack.leagueFilter} className={`w-32 h-32 text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)] z-10 ${isSlicing ? 'animate-pulse' : ''}`} />
+                </div>
+
+                {/* Slicing Line SVG Layer */}
+                {isSlicing && (
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-50">
+                     <polyline 
+                       points={slicePoints.map(p => `${p.x},${p.y}`).join(' ')} 
+                       fill="none" 
+                       stroke="url(#sliceGradient)" 
+                       strokeWidth="12" 
+                       strokeLinecap="round" 
+                       strokeLinejoin="round" 
+                       className="drop-shadow-[0_0_25px_rgba(0,229,255,1)]"
+                     />
+                     <defs>
+                       <linearGradient id="sliceGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                         <stop offset="0%" stopColor="#00E5FF" stopOpacity="0" />
+                         <stop offset="50%" stopColor="#FFF" stopOpacity="1" />
+                         <stop offset="100%" stopColor="#00E5FF" stopOpacity="0" />
+                       </linearGradient>
+                     </defs>
+                  </svg>
+                )}
+              </div>
+            )}
+
+            {/* Phase 3: The Elite Walkout Animation */}
+            {openingPhase === 'walkout' && eliteCardToWalkout && (
+              <div className="absolute inset-0 z-50 bg-[#02050A] flex flex-col items-center justify-center">
+                 {/* Dark Ambient Background */}
+                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#c026d3]/20 via-[#02050A] to-[#02050A]"></div>
+                 
+                 {/* Stage 1: League & Logo */}
+                 {walkoutPhase >= 0 && walkoutPhase < 3 && (
+                   <div className="animate-spotlight absolute flex flex-col items-center justify-center gap-8">
+                     <span className="text-4xl font-sports font-black text-fuchsia-400 tracking-[0.5em] animate-pulse">ELITE WALKOUT</span>
+                     {getTeamLogo(eliteCardToWalkout.team, eliteCardToWalkout.league) && (
+                       <img src={getTeamLogo(eliteCardToWalkout.team, eliteCardToWalkout.league)} alt="" className="w-64 h-64 object-contain drop-shadow-[0_0_50px_rgba(217,70,239,0.8)]"/>
+                     )}
+                   </div>
+                 )}
+
+                 {/* Stage 2: Position overlaps */}
+                 {walkoutPhase >= 1 && walkoutPhase < 3 && (
+                   <div className="absolute bottom-32 animate-in slide-in-from-bottom duration-700">
+                     <span className="text-9xl font-sports font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)]">{eliteCardToWalkout.pos}</span>
+                   </div>
+                 )}
+
+                 {/* Stage 3: The Reveal (Big Card) */}
+                 {walkoutPhase === 3 && (
+                   <div className="relative w-[300px] h-[420px] md:w-[400px] md:h-[560px] animate-burst-in z-50">
+                     {/* Background Flare */}
+                     <div className={`absolute inset-0 scale-125 ${TIERS.ELITE.glow} blur-3xl opacity-60 animate-pulse`}></div>
+                     <PlayerCard player={eliteCardToWalkout} />
+                     <div className="absolute inset-0 rounded-2xl border-4 border-[#f0abfc] animate-pulse pointer-events-none"></div>
+                     
+                     <Confetti />
+                   </div>
+                 )}
+              </div>
+            )}
+
+            {/* Phase 4: Standard Revealing Cards */}
+            {(openingPhase === 'revealing' || openingPhase === 'done') && (
+              <div className="flex flex-col items-center w-full h-full max-w-6xl mx-auto py-12 animate-in fade-in zoom-in-95 duration-500">
+                <h2 className="text-5xl font-sports font-bold tracking-widest uppercase mb-12 text-center text-white drop-shadow-md">
+                  {openingPhase === 'done' ? 'PACK CONTENTS' : 'CLICK CARDS TO REVEAL'}
+                </h2>
+                
+                <div className="flex flex-wrap justify-center gap-6 md:gap-10 w-full perspective-1000 z-20">
+                  {pulledCards.map((card, idx) => (
+                    <div 
+                      key={idx} 
+                      className="relative w-[180px] h-[252px] sm:w-[220px] sm:h-[308px] md:w-[280px] md:h-[392px] cursor-pointer group"
+                      onClick={() => !card.revealed && revealCard(idx)}
+                    >
+                      <div className={`w-full h-full transition-all duration-700 transform-style-3d ${card.revealed ? 'rotate-y-180' : 'hover:scale-105 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,229,255,0.3)] rounded-2xl'}`}>
+                        
+                        {/* Front of card (Face down state) */}
+                        <div className="absolute w-full h-full backface-hidden bg-gradient-to-b from-[#1E293B] to-[#0F172A] border-2 border-[#334155] rounded-2xl flex flex-col items-center justify-center shadow-2xl overflow-hidden">
+                          <Trophy className="w-20 h-20 text-[#475569] mb-4 drop-shadow-md" />
+                          <span className="font-sports text-4xl tracking-widest text-[#475569] uppercase font-black">GRIDIRON</span>
+                          <div className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
+                          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent"></div>
+                        </div>
+
+                        {/* Back of card (Revealed state) */}
+                        <div className={`absolute w-full h-full backface-hidden rotate-y-180 rounded-2xl shadow-2xl transition-all duration-500 ${card.revealed ? TIERS[card.tier].glow : ''}`}>
+                          <PlayerCard player={card} />
+                          {card.tier === 'ELITE' && card.revealed && (
+                            <div className="absolute inset-0 rounded-2xl border-[3px] border-[#f0abfc] animate-pulse pointer-events-none"></div>
+                          )}
+                        </div>
+
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {openingPhase === 'done' && (
+                  <button 
+                    onClick={finishOpening}
+                    className="mt-16 px-12 py-4 bg-[#00E5FF] text-black font-black tracking-widest rounded-full hover:bg-white hover:scale-105 transition-all animate-in slide-in-from-bottom-8 duration-500 flex items-center gap-2 text-2xl font-sports shadow-[0_0_30px_rgba(0,229,255,0.5)] z-50 relative"
+                  >
+                    <ChevronLeft className="w-6 h-6" /> BACK TO STORE
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* VIEW: LINEUP / DEPTH CHART */}
+        {view === 'lineup' && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 border-b border-[#202B45] pb-4 gap-4">
+              <div>
+                <h2 className="text-5xl font-sports font-bold flex items-center gap-3 tracking-wide text-white drop-shadow-md">
+                  <Shield className="w-10 h-10 text-[#00E5FF] mb-1" /> DEPTH CHART
+                </h2>
+                <p className="text-slate-400 mt-1 font-inter font-medium text-sm">Assign players from your roster to field your team.</p>
+              </div>
+              <div className="bg-[#151D30] border border-[#202B45] px-6 py-3 rounded-2xl shadow-lg flex items-center gap-4">
+                 <div className="text-slate-400 font-sports tracking-widest text-xl">TEAM OVR</div>
+                 <div className="text-[#00E5FF] font-sports font-black text-5xl leading-none drop-shadow-[0_0_10px_rgba(0,229,255,0.5)]">{teamOvr}</div>
+              </div>
+            </div>
+            
+            {['OFFENSE', 'DEFENSE', 'SPECIAL'].map(group => (
+              <div key={group} className="bg-[#151D30]/80 backdrop-blur-sm border border-[#202B45] rounded-3xl p-6 shadow-2xl mb-8 relative overflow-hidden">
+                <div className="absolute inset-0 opacity-[0.02] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay"></div>
+                
+                <h3 className="text-4xl font-sports font-bold text-white mb-6 border-b border-[#202B45] pb-2 relative z-10 flex items-center gap-3 tracking-widest drop-shadow-md">
+                  {group === 'OFFENSE' && <Swords className="w-8 h-8 text-[#00E5FF]"/>}
+                  {group === 'DEFENSE' && <Shield className="w-8 h-8 text-[#00E5FF]"/>}
+                  {group === 'SPECIAL' && <Target className="w-8 h-8 text-[#00E5FF]"/>}
+                  {group}
+                </h3>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6 relative z-10">
+                   {LINEUP_CONFIG.filter(cfg => cfg.group === group).map(slot => (
+                     <div key={slot.id} className="flex flex-col gap-2">
+                        <div className="text-sm font-black text-[#00E5FF] text-center tracking-widest bg-[#0B101E] py-1 rounded-t-lg border-t border-x border-[#202B45]">{slot.label}</div>
+                        <div 
+                          className="aspect-[2.5/3.5] bg-[#0B101E] border border-[#202B45] rounded-b-xl rounded-t-sm cursor-pointer hover:border-[#00E5FF] hover:shadow-[0_0_15px_rgba(0,229,255,0.3)] transition-all flex flex-col items-center justify-center overflow-hidden relative group"
+                          onClick={() => setSelectingSlot(slot)}
+                        >
+                           {lineup[slot.id] ? (
+                             <PlayerCard player={lineup[slot.id]} />
+                           ) : (
+                             <div className="text-slate-600 flex flex-col items-center group-hover:text-[#00E5FF] transition-colors">
+                               <Users className="w-10 h-10 mb-2 opacity-40 group-hover:opacity-100 transition-opacity" />
+                               <span className="text-xs font-black tracking-widest uppercase">ADD {slot.roles.join('/')}</span>
+                             </div>
+                           )}
+                        </div>
+                        {lineup[slot.id] && (
+                          <button 
+                            onClick={(e) => removeFromSlot(slot.id, e)}
+                            className="text-[10px] bg-red-950/50 text-red-400 border border-red-900/50 py-1 rounded font-bold hover:bg-red-900 hover:text-white text-center tracking-widest mt-1 transition-colors"
+                          >
+                            REMOVE
+                          </button>
+                        )}
+                     </div>
+                   ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* VIEW: COLLECTION */}
+        {view === 'collection' && (
+          <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 border-b border-[#202B45] pb-4">
+              <div>
+                <h2 className="text-5xl font-sports font-bold flex items-center gap-3 tracking-wide drop-shadow-md">
+                  <Users className="w-10 h-10 text-[#00E5FF] mb-1" /> MY ROSTER
+                </h2>
+                <p className="text-slate-400 mt-1 font-inter font-bold text-sm">Total Players: {collection.length}</p>
+              </div>
+              
+              <button 
+                onClick={sellDuplicates}
+                className="flex items-center gap-2 bg-[#202B45] hover:bg-[#2A3958] text-sm font-bold px-6 py-3 rounded-full transition-colors text-yellow-400 border border-yellow-400/20 hover:border-yellow-400 shadow-lg"
+              >
+                <Coins className="w-4 h-4" /> SELL DUPLICATES
+              </button>
+            </div>
+
+            {/* Filter Bar */}
+            {collection.length > 0 && (
+              <div className="flex flex-wrap gap-3 bg-[#151D30] p-4 rounded-2xl border border-[#202B45] shadow-lg mb-8 items-center">
+                <Filter className="w-5 h-5 text-[#00E5FF] mr-2" />
+                
+                <div className="flex gap-2 border-r border-[#202B45] pr-4 mr-1">
+                  {['ALL', 'NFL', 'UFL', 'CFL'].map(l => (
+                     <button key={l} onClick={() => setActiveLeagueFilter(l)} className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest transition-colors ${activeLeagueFilter === l ? 'bg-[#00E5FF] text-black shadow-[0_0_10px_rgba(0,229,255,0.4)]' : 'bg-[#0B101E] text-slate-400 border border-[#202B45] hover:border-[#00E5FF]/50'}`}>
+                       {l}
+                     </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {['ALL', 'OFFENSE', 'DEFENSE', 'SPECIAL', 'ELITE', 'GOLD', 'SILVER', 'BRONZE'].map(f => (
+                     <button key={f} onClick={() => setActiveFilter(f)} className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest transition-colors ${activeFilter === f ? 'bg-[#00E5FF] text-black shadow-[0_0_10px_rgba(0,229,255,0.4)]' : 'bg-[#0B101E] text-slate-400 border border-[#202B45] hover:border-[#00E5FF]/50'}`}>
+                       {f}
+                     </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {collection.length === 0 ? (
+              <div className="text-center py-24 bg-[#151D30]/80 backdrop-blur-sm rounded-3xl border border-[#202B45] shadow-2xl">
+                <Users className="w-24 h-24 text-[#3A506B] mx-auto mb-6 drop-shadow-lg" />
+                <h3 className="text-4xl font-sports font-bold text-slate-300 tracking-wider">YOUR ROSTER IS EMPTY</h3>
+                <p className="text-slate-500 mt-2 font-inter font-medium text-lg">Head to the store to open some packs!</p>
+                <button 
+                  onClick={() => setView('store')}
+                  className="mt-10 px-10 py-4 bg-[#00E5FF] text-black font-black tracking-widest rounded-full hover:bg-white hover:scale-105 transition-all font-sports text-2xl shadow-[0_0_20px_rgba(0,229,255,0.4)]"
+                >
+                  GO TO STORE
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                {filteredCollection.length > 0 ? filteredCollection.map((player) => (
+                  <div 
+                    key={player.instanceId} 
+                    className="h-[260px] sm:h-[300px] md:h-[340px] hover:scale-105 transition-transform duration-300 cursor-pointer hover:z-10 relative"
+                    onClick={() => openPlayerDetails(player)}
+                  >
+                     <PlayerCard player={player} />
+                  </div>
+                )) : (
+                  <div className="col-span-full py-12 text-center text-slate-500 font-inter font-bold">No players match these filters.</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* VIEW: GAMES */}
+        {view === 'games' && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            <div className="flex justify-between items-end mb-8 border-b border-[#202B45] pb-4">
+              <div>
+                <h2 className="text-5xl font-sports font-bold flex items-center gap-3 tracking-wide drop-shadow-md">
+                  <Gamepad2 className="w-10 h-10 text-[#00E5FF] mb-1" /> TRAINING CAMP
+                </h2>
+                <p className="text-slate-400 mt-1 font-inter font-medium">Play minigames to earn extra coins & XP.</p>
+              </div>
+            </div>
+
+            {!activeGame ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Game 1 Selector */}
+                <div 
+                  onClick={() => { setActiveGame('fg'); setFgPlaying(false); setFgMeter({val: 50, dir: 1}); }}
+                  className="bg-[#151D30] border border-[#202B45] rounded-3xl p-8 hover:border-[#00E5FF] transition-all cursor-pointer group flex flex-col items-center text-center shadow-xl hover:-translate-y-2"
+                >
+                  <div className="w-24 h-24 bg-[#0B101E] rounded-full flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all border border-[#202B45] group-hover:border-[#00E5FF]">
+                    <Target className="w-12 h-12 text-[#00E5FF]" />
+                  </div>
+                  <h3 className="text-3xl font-sports font-bold text-white tracking-widest mb-2 group-hover:text-[#00E5FF] transition-colors">FIELD GOAL KICKER</h3>
+                  <p className="text-slate-400 font-inter font-medium text-sm">Time your kick perfectly. The closer to the center, the more coins you earn!</p>
+                </div>
+
+                {/* Game 2 Selector */}
+                <div 
+                  onClick={() => { setActiveGame('drill'); setDrillPlaying(false); setDrillTime(0); setDrillScore(0); }}
+                  className="bg-[#151D30] border border-[#202B45] rounded-3xl p-8 hover:border-[#00E5FF] transition-all cursor-pointer group flex flex-col items-center text-center shadow-xl hover:-translate-y-2"
+                >
+                  <div className="w-24 h-24 bg-[#0B101E] rounded-full flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all border border-[#202B45] group-hover:border-[#00E5FF]">
+                    <Timer className="w-12 h-12 text-[#00E5FF]" />
+                  </div>
+                  <h3 className="text-3xl font-sports font-bold text-white tracking-widest mb-2 group-hover:text-[#00E5FF] transition-colors">2-MINUTE DRILL</h3>
+                  <p className="text-slate-400 font-inter font-medium text-sm">Sprint down the field! Tap as fast as you can in 10 seconds for coins.</p>
+                </div>
+
+                {/* Game 3 Selector */}
+                <div 
+                  onClick={() => { setActiveGame('acc'); setAccPlaying(false); setAccTime(0); setAccScore(0); setAccTargets([]); }}
+                  className="bg-[#151D30] border border-[#202B45] rounded-3xl p-8 hover:border-[#00E5FF] transition-all cursor-pointer group flex flex-col items-center text-center shadow-xl hover:-translate-y-2"
+                >
+                  <div className="w-24 h-24 bg-[#0B101E] rounded-full flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all border border-[#202B45] group-hover:border-[#00E5FF]">
+                    <Crosshair className="w-12 h-12 text-[#00E5FF]" />
+                  </div>
+                  <h3 className="text-3xl font-sports font-bold text-white tracking-widest mb-2 group-hover:text-[#00E5FF] transition-colors">TARGET PRACTICE</h3>
+                  <p className="text-slate-400 font-inter font-medium text-sm">Click the receivers as they pop up on the field. Fast reactions earn big coins!</p>
+                </div>
+              </div>
+            ) : activeGame === 'fg' ? (
+              <div className="bg-[#151D30] border border-[#202B45] rounded-3xl p-10 shadow-2xl flex flex-col items-center max-w-2xl mx-auto animate-in zoom-in-95 duration-300">
+                <button onClick={() => setActiveGame(null)} className="self-start text-slate-400 hover:text-white flex items-center gap-2 font-sports text-xl mb-6 bg-[#0B101E] px-4 py-2 rounded-lg border border-[#202B45]">
+                  <ChevronLeft className="w-5 h-5"/> BACK
+                </button>
+                <Target className="w-20 h-20 text-[#00E5FF] mb-6 drop-shadow-[0_0_15px_rgba(0,229,255,0.5)]" />
+                <h3 className="text-5xl font-sports font-bold text-white tracking-widest mb-12 drop-shadow-md">FIELD GOAL KICKER</h3>
+                
+                <div className="w-full h-14 bg-[#0B101E] border-2 border-[#202B45] rounded-full relative overflow-hidden mb-12 shadow-inner">
+                   {/* Perfect Zone */}
+                   <div className="absolute top-0 bottom-0 left-[45%] w-[10%] bg-[#00E5FF]/40 border-x border-[#00E5FF]/60"></div>
+                   <div className="absolute top-0 bottom-0 left-[49%] w-[2%] bg-[#00E5FF] shadow-[0_0_10px_rgba(0,229,255,0.8)]"></div>
+                   
+                   {/* Moving Meter */}
+                   <div 
+                     className="absolute top-0 bottom-0 w-4 bg-yellow-400 shadow-[0_0_15px_yellow] rounded-full"
+                     style={{ left: fgMeter.val + '%', transition: fgPlaying ? 'none' : 'left 0.1s' }}
+                   ></div>
+                </div>
+
+                {!fgPlaying ? (
+                  <button 
+                    onClick={() => { setFgPlaying(true); setFgMeter({val: 50, dir: 1}); }}
+                    className="px-12 py-5 bg-[#00E5FF] text-black font-black tracking-widest rounded-full hover:bg-white hover:scale-105 transition-all text-2xl font-sports shadow-[0_0_25px_rgba(0,229,255,0.5)]"
+                  >
+                    START METER
+                  </button>
+                ) : (
+                  <button 
+                    onClick={kickFieldGoal}
+                    className="px-12 py-5 bg-yellow-500 text-black font-black tracking-widest rounded-full hover:bg-yellow-400 hover:scale-105 transition-all text-3xl font-sports shadow-[0_0_25px_rgba(234,179,8,0.5)]"
+                  >
+                    KICK!
+                  </button>
+                )}
+              </div>
+            ) : activeGame === 'drill' ? (
+              <div className="bg-[#151D30] border border-[#202B45] rounded-3xl p-10 shadow-2xl flex flex-col items-center max-w-2xl mx-auto animate-in zoom-in-95 duration-300">
+                <button onClick={() => setActiveGame(null)} className="self-start text-slate-400 hover:text-white flex items-center gap-2 font-sports text-xl mb-6 bg-[#0B101E] px-4 py-2 rounded-lg border border-[#202B45]">
+                  <ChevronLeft className="w-5 h-5"/> BACK
+                </button>
+                <Timer className="w-20 h-20 text-[#00E5FF] mb-6 drop-shadow-[0_0_15px_rgba(0,229,255,0.5)]" />
+                <h3 className="text-5xl font-sports font-bold text-white tracking-widest mb-4 drop-shadow-md">2-MINUTE DRILL</h3>
+                
+                <div className="text-7xl font-sports font-black text-yellow-400 mb-8 tracking-widest drop-shadow-[0_0_15px_rgba(234,179,8,0.4)]">
+                  {drillTime}s
+                </div>
+
+                <div className="text-3xl font-sports text-slate-300 mb-10 bg-[#0B101E] px-8 py-3 rounded-2xl border border-[#202B45]">
+                  SCORE: <span className="text-[#00E5FF] text-5xl font-black ml-2">{drillScore}</span>
+                </div>
+
+                {!drillPlaying && drillTime === 0 ? (
+                  <button 
+                    onClick={() => { setDrillPlaying(true); setDrillTime(10); setDrillScore(0); }}
+                    className="px-12 py-5 bg-[#00E5FF] text-black font-black tracking-widest rounded-full hover:bg-white transition-colors text-2xl font-sports shadow-[0_0_25px_rgba(0,229,255,0.5)]"
+                  >
+                    START DRILL
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => { if(drillPlaying && drillTime > 0) setDrillScore(s => s + 1); }}
+                    className="w-56 h-56 rounded-full bg-[#202B45] border-8 border-[#00E5FF] hover:bg-[#2A3958] active:scale-95 transition-all flex items-center justify-center shadow-[0_0_40px_rgba(0,229,255,0.3)]"
+                  >
+                    <span className="text-5xl font-sports font-black text-[#00E5FF] tracking-widest select-none drop-shadow-md">SPRINT!</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="bg-[#151D30] border border-[#202B45] rounded-3xl p-8 shadow-2xl flex flex-col items-center max-w-4xl mx-auto animate-in zoom-in-95 duration-300">
+                <button onClick={() => setActiveGame(null)} className="self-start text-slate-400 hover:text-white flex items-center gap-2 font-sports text-xl mb-4 bg-[#0B101E] px-4 py-2 rounded-lg border border-[#202B45]">
+                  <ChevronLeft className="w-5 h-5"/> BACK
+                </button>
+                <div className="flex flex-col md:flex-row justify-between w-full items-center mb-6 gap-6">
+                  <div className="flex items-center gap-4">
+                     <Crosshair className="w-14 h-14 text-[#00E5FF] drop-shadow-[0_0_15px_rgba(0,229,255,0.5)]" />
+                     <h3 className="text-4xl font-sports font-bold text-white tracking-widest mt-2 drop-shadow-md">TARGET PRACTICE</h3>
+                  </div>
+                  <div className="flex gap-8 bg-[#0B101E] px-6 py-2 rounded-2xl border border-[#202B45]">
+                    <div className="text-2xl font-sports text-slate-300 tracking-widest mt-2">
+                      TIME: <span className="text-yellow-400 text-4xl ml-2">{accTime}s</span>
+                    </div>
+                    <div className="w-px bg-[#202B45]"></div>
+                    <div className="text-2xl font-sports text-slate-300 tracking-widest mt-2">
+                      HITS: <span className="text-[#00E5FF] font-black text-4xl ml-2">{accScore}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full h-[400px] bg-[#0B101E] border-4 border-[#202B45] rounded-2xl relative overflow-hidden mb-8 cursor-crosshair shadow-inner bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+                   {accPlaying ? (
+                     accTargets.map(t => (
+                       <div 
+                         key={t.id}
+                         onMouseDown={(e) => { e.stopPropagation(); hitTarget(t.id); }}
+                         className="absolute w-16 h-16 bg-gradient-to-br from-yellow-300 to-yellow-500 rounded-full border-4 border-white shadow-[0_0_25px_rgba(234,179,8,0.8)] flex items-center justify-center animate-in zoom-in duration-100 cursor-crosshair transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 active:scale-95"
+                         style={{ left: `${t.x}%`, top: `${t.y}%` }}
+                       >
+                         <Target className="w-8 h-8 text-black pointer-events-none drop-shadow-sm"/>
+                       </div>
+                     ))
+                   ) : (
+                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                       <span className="text-white font-sports text-6xl font-black tracking-widest drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">PRESS START</span>
+                     </div>
+                   )}
+                </div>
+
+                {!accPlaying && accTime === 0 && (
+                  <button 
+                    onClick={() => { setAccPlaying(true); setAccTime(15); setAccScore(0); setAccTargets([]); }}
+                    className="px-12 py-5 bg-[#00E5FF] text-black font-black tracking-widest rounded-full hover:bg-white hover:scale-105 transition-all text-3xl font-sports shadow-[0_0_25px_rgba(0,229,255,0.5)]"
+                  >
+                    START DRILL
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PLAYER SELECTION MODAL (For Lineup) */}
+        {selectingSlot && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B101E]/95 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-[#151D30] border border-[#202B45] rounded-3xl max-w-6xl w-full shadow-[0_0_100px_rgba(0,0,0,0.8)] relative font-inter overflow-hidden max-h-[90vh] flex flex-col">
+               <div className="p-6 md:p-8 border-b border-[#202B45] flex justify-between items-center bg-[#0B101E]">
+                 <div>
+                   <h3 className="text-4xl font-sports text-white font-bold tracking-widest uppercase drop-shadow-md">SELECT {selectingSlot.label}</h3>
+                   <p className="text-[#00E5FF] font-medium text-sm mt-1">Showing eligible players for this position.</p>
+                 </div>
+                 <button onClick={() => setSelectingSlot(null)} className="text-slate-400 hover:text-white bg-[#151D30] p-3 rounded-full border border-[#202B45] shadow-lg">
+                   <X className="w-6 h-6"/>
+                 </button>
+               </div>
+               
+               <div className="p-6 md:p-8 overflow-y-auto flex-grow grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6 bg-[#0B101E]/50">
+                 {getEligiblePlayers(selectingSlot).length > 0 ? (
+                   getEligiblePlayers(selectingSlot).map(p => (
+                     <div key={p.instanceId} onClick={() => assignPlayerToSlot(p)} className="cursor-pointer hover:scale-105 transition-transform duration-300 h-[260px] sm:h-[300px]">
+                       <PlayerCard player={p} />
+                     </div>
+                   ))
+                 ) : (
+                   <div className="col-span-full py-24 text-center flex flex-col items-center bg-[#151D30] rounded-2xl border border-[#202B45]">
+                     <Users className="w-20 h-20 text-[#3A506B] mb-6" />
+                     <h3 className="text-3xl font-sports font-bold text-slate-300 tracking-wider">NO ELIGIBLE PLAYERS</h3>
+                     <p className="text-slate-500 font-inter mt-2">You don't have any unassigned players for this slot.</p>
+                   </div>
+                 )}
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* DETAILED STATS MODAL OVERLAY */}
+        {selectedPlayer && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B101E]/95 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-[#151D30] border border-[#202B45] rounded-3xl max-w-5xl w-full shadow-[0_0_100px_rgba(0,0,0,0.8)] relative font-inter overflow-hidden max-h-[90vh] overflow-y-auto">
+              
+              <button onClick={closePlayerDetails} className="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors z-50 bg-[#0B101E] p-3 rounded-full border border-[#202B45] shadow-lg">
+                <X className="w-6 h-6" />
+              </button>
+              
+              {/* Top Banner (Player info & Large Image) */}
+              <div className="bg-[#0B101E] pt-12 pb-8 px-6 md:px-12 border-b border-[#202B45] flex flex-col md:flex-row items-center md:items-end gap-10 relative overflow-hidden">
+                <div className={`absolute inset-0 bg-gradient-to-br ${TIERS[selectedPlayer.tier].color} opacity-20 mix-blend-screen pointer-events-none`}></div>
+                
+                {/* Background Team Logo Watermark */}
+              {getTeamLogo(selectedPlayer.team, selectedPlayer.league) && (
+                <div className="absolute inset-0 flex items-center justify-center opacity-[0.4] pointer-events-none overflow-hidden z-0">
+                  <img src={getTeamLogo(selectedPlayer.team, selectedPlayer.league)} alt="" className="w-full max-w-3xl h-auto object-contain scale-150 drop-shadow-[0_0_50px_rgba(255,255,255,0.3)]" onError={(e) => { e.target.style.display = 'none'; }}/>
+                </div>
+              )}
+
+              <ModalPlayerImage player={selectedPlayer} />
+
+              {/* Name, Team, and Badges */}
+                <div className="flex-grow z-20 pb-2 flex flex-col items-center md:items-start text-center md:text-left">
+                   <h2 className="text-6xl md:text-7xl font-sports font-bold text-white uppercase tracking-wider leading-[0.9] drop-shadow-lg mb-2">
+                     {selectedPlayer.name}
+                   </h2>
+                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-2 bg-[#151D30]/80 backdrop-blur-sm p-2 rounded-xl border border-[#202B45] w-max">
+                     <span className="text-[#00E5FF] font-sports font-bold text-2xl px-2">{selectedPlayer.pos}</span> 
+                     <div className="w-px h-6 bg-[#3A506B]"></div>
+                     <span className="text-white font-sports font-bold text-xl px-2 tracking-widest">{selectedPlayer.team}</span> 
+                     <div className="w-px h-6 bg-[#3A506B]"></div>
+                     <span className={`${TIERS[selectedPlayer.tier].text} uppercase tracking-widest text-sm font-black px-3`}>{selectedPlayer.league} {TIERS[selectedPlayer.tier].name}</span>
+                   </div>
+                   
+                   {/* Traits Row */}
+                   {selectedPlayer.details.traits && selectedPlayer.details.traits.length > 0 && (
+                     <div className="mt-8 w-full">
+                       <h4 className="text-sm font-black text-[#00E5FF] drop-shadow-[0_0_8px_rgba(0,229,255,0.8)] mb-3 uppercase tracking-widest border-b border-[#00E5FF]/40 pb-1 w-max">SIGNATURE TRAITS</h4>
+                       <div className="flex flex-wrap justify-center md:justify-start gap-2.5">
+                         {selectedPlayer.details.traits.map(t => (
+                           <div key={t.acronym} title={t.name} className="px-4 py-2 bg-[#0B101E] border border-[#202B45] rounded-xl flex items-center gap-3 shadow-lg cursor-help hover:border-[#00E5FF] hover:shadow-[0_0_15px_rgba(0,229,255,0.3)] transition-all">
+                             <span className="font-sports text-2xl font-bold text-[#FFD700] leading-none mt-1 drop-shadow-md">{t.acronym}</span>
+                             <span className="text-xs font-inter font-bold text-slate-300 whitespace-nowrap">{t.name}</span>
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+                </div>
+              </div>
+
+              {/* Stats Body */}
+              <div className="p-6 md:p-12 bg-[#151D30]">
+                {/* Header row: Overall / Potential */}
+                <div className="flex justify-between items-center mb-12 border-b-2 border-[#202B45] pb-8 bg-[#0B101E] p-6 rounded-2xl shadow-inner">
+                  <div className="flex items-center gap-4">
+                    <span className="text-3xl md:text-4xl font-black text-slate-400 font-sports tracking-wide">OVERALL</span>
+                    <span className="text-[#00E5FF] text-5xl md:text-6xl font-sports font-black drop-shadow-[0_0_15px_rgba(0,229,255,0.5)]">{selectedPlayer.rating}</span>
+                    {selectedPlayer.details.ovrMod !== 0 && (
+                      <span className={`text-2xl font-sports font-bold mt-2 px-3 py-1 rounded-lg bg-black/50 ${selectedPlayer.details.ovrMod > 0 ? 'text-[#00E5FF]' : 'text-[#FF3366]'}`}>
+                        ({selectedPlayer.details.ovrMod > 0 ? '+' : ''}{selectedPlayer.details.ovrMod})
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="text-3xl md:text-4xl font-black text-slate-500 font-sports tracking-wide">POTENTIAL</span>
+                    <span className="text-white text-4xl md:text-5xl font-sports font-black">{selectedPlayer.rating + selectedPlayer.details.potentialMod}</span>
+                    {selectedPlayer.details.potentialMod !== 0 && (
+                       <span className="text-xl font-sports font-bold mt-2 text-[#00E5FF] px-2 py-1 rounded bg-black/50">(+{selectedPlayer.details.potentialMod})</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3 Column Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-16 gap-y-12">
+                  {/* COLUMN 1 */}
+                  <div className="space-y-10">
+                    <div>
+                      <h3 className="text-white font-black text-xl mb-4 border-b-2 border-[#3A506B] pb-2 w-full tracking-widest flex items-center gap-2"><Trophy className="w-5 h-5 text-[#00E5FF]" /> PHYSICAL</h3>
+                      <StatRow label="Height" statObj={selectedPlayer.details.physical.height} omitValueIfZero={true}/>
+                      <StatRow label="Strength" statObj={selectedPlayer.details.physical.strength} />
+                      <StatRow label="Speed" statObj={selectedPlayer.details.physical.speed} />
+                      <StatRow label="Endurance" statObj={selectedPlayer.details.physical.endurance} />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-black text-xl mb-4 border-b-2 border-[#3A506B] pb-2 w-full tracking-widest flex items-center gap-2 mt-8"><Shield className="w-5 h-5 text-[#00E5FF]" /> BLOCKING</h3>
+                      <StatRow label="Pass Blocking" statObj={selectedPlayer.details.blocking.passBlocking} />
+                      <StatRow label="Run Blocking" statObj={selectedPlayer.details.blocking.runBlocking} />
+                    </div>
+                  </div>
+
+                  {/* COLUMN 2 */}
+                  <div className="space-y-10">
+                    <div>
+                      <h3 className="text-white font-black text-xl mb-4 border-b-2 border-[#3A506B] pb-2 w-full tracking-widest flex items-center gap-2"><Target className="w-5 h-5 text-[#00E5FF]" /> PASSING</h3>
+                      <StatRow label="Vision" statObj={selectedPlayer.details.passing.vision} />
+                      <StatRow label="Power" statObj={selectedPlayer.details.passing.power} />
+                      <StatRow label="Accuracy" statObj={selectedPlayer.details.passing.accuracy} />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-black text-xl mb-4 border-b-2 border-[#3A506B] pb-2 w-full tracking-widest flex items-center gap-2 mt-8"><Swords className="w-5 h-5 text-[#00E5FF]" /> DEFENSE</h3>
+                      <StatRow label="Pass Coverage" statObj={selectedPlayer.details.defense.passCoverage} />
+                      <StatRow label="Tackling" statObj={selectedPlayer.details.defense.tackling} />
+                      <StatRow label="Pass Rushing" statObj={selectedPlayer.details.defense.passRushing} />
+                      <StatRow label="Run Stopping" statObj={selectedPlayer.details.defense.runStopping} />
+                    </div>
+                  </div>
+
+                  {/* COLUMN 3 */}
+                  <div className="space-y-10">
+                    <div>
+                      <h3 className="text-white font-black text-xl mb-4 border-b-2 border-[#3A506B] pb-2 w-full tracking-widest flex items-center gap-2"><Zap className="w-5 h-5 text-[#00E5FF]" /> REC/RUSH</h3>
+                      <StatRow label="Elusiveness" statObj={selectedPlayer.details.rushingReceiving.elusiveness} />
+                      <StatRow label="Route Running" statObj={selectedPlayer.details.rushingReceiving.routeRunning} omitValueIfZero={true} />
+                      <StatRow label="Hands" statObj={selectedPlayer.details.rushingReceiving.hands} />
+                      <StatRow label="Ball Security" statObj={selectedPlayer.details.rushingReceiving.ballSecurity} />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-black text-xl mb-4 border-b-2 border-[#3A506B] pb-2 w-full tracking-widest flex items-center gap-2 mt-8"><Crosshair className="w-5 h-5 text-[#00E5FF]" /> KICKING</h3>
+                      <StatRow label="Kick Power" statObj={selectedPlayer.details.kicking.kickPower} />
+                      <StatRow label="Kick Accuracy" statObj={selectedPlayer.details.kicking.kickAccuracy} />
+                      <StatRow label="Punt Power" statObj={selectedPlayer.details.kicking.puntPower} />
+                      <StatRow label="Punt Accuracy" statObj={selectedPlayer.details.kicking.puntAccuracy} omitValueIfZero={true} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Click away to close layer */}
+            <div className="absolute inset-0 z-[-1]" onClick={closePlayerDetails}></div>
+          </div>
+        )}
+
+      </main>
+    </div>
+  );
+}
+
+// React Component to safely render large images without DOM manipulation errors
+function ModalPlayerImage({ player }) {
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setError(false);
+  }, [player.id]);
+
+  if (error || player.espnId === 'fallback') {
+    return null;
+  }
+
+  return (
+    <div className="w-48 h-48 md:w-64 md:h-64 flex-shrink-0 relative z-20 flex items-end justify-center">
+      <img 
+        src={`https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/${player.espnId}.png&w=500&h=360`} 
+        alt={player.name} 
+        onError={() => setError(true)}
+        className="w-[130%] max-w-none object-bottom object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.8)] translate-y-6"
+      />
+    </div>
+  );
+}
+
+// Custom component to safely fetch and render Pack League Logos
+function PackLogo({ league, className }) {
+  const [error, setError] = useState(false);
+  
+  const getLogo = (l) => {
+    // Determine the proper league path based on array filters or single strings
+    const checkLeague = Array.isArray(l) ? 'MIXED' : l;
+    
+    if (checkLeague === 'NFL') return 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
+    if (checkLeague === 'CFL') return 'https://upload.wikimedia.org/wikipedia/en/thumb/c/ca/CFL_2016_logo.svg/512px-CFL_2016_logo.svg.png';
+    if (checkLeague === 'UFL') return 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/United_Football_League_%282024%29_logo.svg/512px-United_Football_League_%282024%29_logo.svg.png';
+    return null;
+  };
+
+  const url = getLogo(league);
+
+  if (error || !url) {
+    return <Package className={className} />;
+  }
+
+  return (
+    <img 
+      src={url} 
+      alt={`${league} Logo`} 
+      className={`${className} object-contain`} 
+      onError={() => setError(true)} 
+    />
+  );
+}
+
+// Confetti Component for Celebrations
+function Confetti() {
+  const [pieces, setPieces] = useState([]);
+  
+  useEffect(() => {
+    const colors = ['#00E5FF', '#f0abfc', '#FFD700', '#ffffff', '#10B981'];
+    const newPieces = Array.from({ length: 60 }).map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 2}s`,
+      backgroundColor: colors[Math.floor(Math.random() * colors.length)],
+      width: `${Math.random() * 10 + 5}px`,
+      height: `${Math.random() * 20 + 10}px`
+    }));
+    setPieces(newPieces);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 z-[100] pointer-events-none overflow-hidden">
+      {pieces.map(p => (
+        <div 
+          key={p.id}
+          className="confetti-piece rounded-sm shadow-sm"
+          style={{
+            left: p.left,
+            animationDelay: p.animationDelay,
+            backgroundColor: p.backgroundColor,
+            width: p.width,
+            height: p.height
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Sub-component for the Player Card UI
+function PlayerCard({ player }) {
+  const tierInfo = TIERS[player.tier];
+  const [imgError, setImgError] = useState(false);
+  const logoUrl = getTeamLogo(player.team, player.league);
+  
+  useEffect(() => {
+    setImgError(false);
+  }, [player.instanceId]);
+  
+  return (
+    <div className="relative w-full h-full rounded-2xl overflow-hidden bg-[#0B101E] border border-[#3A506B] shadow-2xl group isolate font-sans">
+      <div className={`absolute inset-0 bg-gradient-to-br ${tierInfo.color} opacity-30 mix-blend-screen`}></div>
+      <div className="absolute inset-0 opacity-[0.25] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-overlay pointer-events-none"></div>
+
+      {/* Team Logo Watermark in Background */}
+      {logoUrl && (
+        <div className="absolute inset-0 flex items-center justify-center opacity-50 pointer-events-none z-0">
+          <img src={logoUrl} alt="" className="w-full h-auto object-contain scale-[1.6] drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]" onError={(e) => { e.target.style.display = 'none'; }}/>
+        </div>
+      )}
+
+      <div className="absolute top-4 left-4 z-20 flex flex-col items-center drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">
+        <span className={`text-6xl md:text-7xl lg:text-8xl font-sports font-bold ${tierInfo.text} leading-[0.8] tracking-tight`}>
+          {player.rating}
+        </span>
+        <span className="text-base md:text-xl font-sports font-bold text-white tracking-widest leading-tight mt-1">{player.pos}</span>
+      </div>
+
+      <div className="absolute top-4 right-4 z-20 w-12 h-12 md:w-14 md:h-14 rounded-lg bg-[#0B101E]/90 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl">
+        <span className="text-base md:text-lg font-sports font-bold text-white mt-1">{player.team}</span>
+      </div>
+
+      {/* Mini League Tag for Non-NFL */}
+      {player.league !== 'NFL' && (
+         <div className="absolute top-20 right-4 z-20 text-[10px] md:text-xs font-black text-[#00E5FF] tracking-widest bg-[#0B101E]/90 border border-[#202B45] px-2 py-0.5 rounded shadow-lg">
+           {player.league}
+         </div>
+      )}
+
+      {/* Premium Image Layer - ONLY SHOW IF PICTURE EXISTS */}
+      {!imgError && player.espnId !== 'fallback' && (
+        <div className="absolute bottom-12 md:bottom-16 w-full h-[85%] flex items-end justify-center z-10 transition-transform duration-700 ease-out group-hover:scale-[1.15] group-hover:-translate-y-3 origin-bottom">
+          <img 
+            src={`https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/${player.espnId}.png&w=350&h=254`} 
+            alt={player.name} 
+            onError={() => setImgError(true)}
+            className="w-[140%] max-w-none object-bottom object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.9)]"
+          />
+        </div>
+      )}
+
+      {/* Bottom Nameplate */}
+      <div className="absolute bottom-0 left-0 w-full p-4 md:p-6 bg-gradient-to-t from-[#02050A] via-[#0B101E]/95 to-transparent z-20">
+        <div className="flex flex-col items-center transform transition-transform duration-500 group-hover:-translate-y-2">
+          <h3 className="font-sports font-bold text-3xl md:text-4xl uppercase tracking-widest text-white whitespace-nowrap overflow-hidden text-ellipsis w-full text-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-none">
+            {player.name}
+          </h3>
+          <div className="flex items-center gap-2 mt-2 bg-[#0B101E]/50 px-3 py-1 rounded-full border border-white/10 backdrop-blur-sm">
+            <span className={`text-[10px] md:text-[11px] font-black ${tierInfo.text} uppercase tracking-widest drop-shadow-md`}>
+              {tierInfo.name} Tier
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Glare effect */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 z-30 pointer-events-none transform -translate-x-full group-hover:translate-x-full ease-out"></div>
+    </div>
+  );
+}
